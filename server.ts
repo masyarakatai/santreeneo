@@ -43,13 +43,25 @@ async function startServer() {
   );
   scopeSet.add("user");
   const oauthScope = Array.from(scopeSet).join(" ");
-  const quranServer = createServerClient({
-    clientId: process.env.QURAN_CLIENT_ID || '',
-    clientSecret: process.env.QURAN_CLIENT_SECRET || '',
-    services: {
-      oauth2BaseUrl: oauthBaseUrl
+  let quranServer: ReturnType<typeof createServerClient> | null = null;
+  let quranServerInitTried = false;
+  const getQuranServer = () => {
+    if (quranServerInitTried) return quranServer;
+    quranServerInitTried = true;
+    try {
+      quranServer = createServerClient({
+        clientId: process.env.QURAN_CLIENT_ID || '',
+        clientSecret: process.env.QURAN_CLIENT_SECRET || '',
+        services: {
+          oauth2BaseUrl: oauthBaseUrl
+        }
+      });
+    } catch (e: any) {
+      console.error("[QURAN_SDK_INIT_FAILED]", e?.message || "Unknown error");
+      quranServer = null;
     }
-  });
+    return quranServer;
+  };
   const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
   const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
     ? quranUserApiBaseRaw.replace(/\/+$/, "")
@@ -310,8 +322,11 @@ async function startServer() {
     try {
       const chapterId = req.params.chapterId;
       try {
-        const info = await quranServer.content.v4.chapters.getInfo(chapterId as any);
-        return res.json(info);
+        const sdk = getQuranServer();
+        if (sdk) {
+          const info = await sdk.content.v4.chapters.getInfo(chapterId as any);
+          return res.json(info);
+        }
       } catch (sdkError: any) {
         console.warn("[API] SDK chapter-info failed, falling back to public API:", sdkError?.message);
       }
