@@ -17,7 +17,8 @@ async function startServer() {
       status: "ok", 
       env: process.env.NODE_ENV, 
       vercel: !!process.env.VERCEL,
-      has_client_id: !!process.env.QURAN_CLIENT_ID 
+      has_client_id: !!process.env.QURAN_CLIENT_ID,
+      has_client_secret: !!process.env.QURAN_CLIENT_SECRET
     });
   });
 
@@ -37,7 +38,7 @@ async function startServer() {
         return res.status(500).json({ error: "Missing QURAN_CLIENT_ID" });
       }
 
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const protocol = process.env.VERCEL ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol);
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
       
@@ -46,6 +47,7 @@ async function startServer() {
 
       const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
       
+      console.log("[AUTH] Initiating with URI:", redirectUri);
       res.redirect(authUrl);
     } catch (err: any) {
       res.status(500).json({ error: "Auth initiation failed", message: err.message });
@@ -55,10 +57,10 @@ async function startServer() {
   // Auth Callback
   app.get("/api/auth/quran/callback", async (req, res) => {
     const { code } = req.query;
-    if (!code) return res.redirect('/?quran_login=error');
+    if (!code) return res.redirect('/?quran_login=error&reason=no_code');
 
     try {
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const protocol = process.env.VERCEL ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol);
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
 
