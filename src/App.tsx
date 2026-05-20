@@ -606,11 +606,8 @@ export default function App() {
 
   const handleQuranLogin = () => {
     playSound('open');
-    // Simulate OAuth2 redirect for demo purposes
-    setAuthLoading(true);
-    setTimeout(() => {
-      window.location.href = '/?quran_login=success';
-    }, 1500);
+    // Redirect to real backend OAuth initiator
+    window.location.href = '/api/auth/quran';
   };
   const [coords, setCoords] = useState<[number, number]>([-6.2088, 106.8456]); 
   const [locationStatus, setLocationStatus] = useState<'waiting' | 'found' | 'error'>('waiting');

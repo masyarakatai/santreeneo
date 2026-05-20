@@ -41,11 +41,12 @@ async function startServer() {
   });
 
   app.get("/api/auth/quran", (req, res) => {
-    const clientId = process.env.QURAN_CLIENT_ID || 'b952392b-b89f-4b66-93a8-60e2dfb82ae4';
+    const clientId = process.env.QURAN_CLIENT_ID;
     const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/quran/callback`;
     const scope = 'openid profile email bookmarks activity';
-    const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
-    console.log("[AUTH] Redirecting to:", authUrl);
+    // Using Production endpoint from the email
+    const authUrl = `https://oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+    console.log("[AUTH] Redirecting to Production:", authUrl);
     res.redirect(authUrl);
   });
 
