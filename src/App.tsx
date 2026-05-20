@@ -47,30 +47,45 @@ const quranPublic = createPublicClient({
 
 // --- Components ---
 
-const LoginOverlay = () => (
+const LoginOverlay = ({ onGuestLogin }: { onGuestLogin: () => void }) => (
   <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="bg-surface-container-high neubrutalist-border hard-shadow w-full max-w-sm rounded-3xl p-10 flex flex-col items-center gap-8 relative"
+      className="bg-surface-container-high neubrutalist-border hard-shadow w-full max-w-sm rounded-3xl p-10 flex flex-col items-center gap-6 relative"
     >
       <div className="w-24 h-24 bg-tertiary-fixed rounded-full neubrutalist-border flex items-center justify-center text-4xl shadow-[6px_6px_0px_0px_rgba(34,26,20,1)] hover:-translate-y-2 transition-transform cursor-pointer">
         🧭
       </div>
       <div>
-        <h1 className="text-4xl font-headline-md font-bold text-on-surface uppercase mb-2">Quranic Quest</h1>
-        <p className="text-on-surface-variant font-label-bold uppercase tracking-widest text-[10px]">A Journey to Enlightenment</p>
+        <h1 className="text-4xl font-headline-md font-bold text-on-surface uppercase mb-2 text-center">AyahQuest</h1>
+        <p className="text-on-surface-variant font-label-bold uppercase tracking-widest text-[10px] text-center">A Journey to Enlightenment</p>
       </div>
-      <button 
-        onClick={() => {
-          playSound('open');
-          signInWithGoogle();
-        }}
-        className="w-full bg-primary text-on-primary font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
-      >
-        <span className="material-symbols-outlined">login</span>
-        BEGIN ADVENTURE
-      </button>
+      
+      <div className="flex flex-col gap-3 w-full">
+        <button 
+          onClick={() => {
+            playSound('open');
+            signInWithGoogle();
+          }}
+          className="w-full bg-primary text-on-primary font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
+        >
+          <span className="material-symbols-outlined">login</span>
+          GOOGLE LOGIN
+        </button>
+
+        <button 
+          onClick={onGuestLogin}
+          className="w-full bg-surface text-on-surface font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed"
+        >
+          <span className="material-symbols-outlined">person_outline</span>
+          GUEST MODE (DEMO)
+        </button>
+      </div>
+
+      <p className="text-[10px] text-on-surface-variant italic px-4">
+        Note: Guest mode data won't be saved to the cloud. Use Google Login for permanent progress.
+      </p>
     </motion.div>
   </div>
 );
@@ -568,8 +583,19 @@ const BottomNav = ({ active, onChange }: { active: string, onChange: (val: strin
 };
 
 export default function App() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  // ... (inside the component, before the return)
+  
+  const handleGuestLogin = () => {
+    playSound('open');
+    setUser({
+      uid: 'guest-user',
+      displayName: 'Guest Explorer',
+      email: 'guest@ayahquest.com'
+    });
+  };
   const [coords, setCoords] = useState<[number, number]>([-6.2088, 106.8456]); 
   const [locationStatus, setLocationStatus] = useState<'waiting' | 'found' | 'error'>('waiting');
   const [xp, setXp] = useState(0);
@@ -809,14 +835,16 @@ export default function App() {
     }
 
     try {
-      const profileRef = doc(db, 'profiles', user.uid);
-      await updateDoc(profileRef, { 
-        xp: newXp, 
-        streak: newStreak,
-        rank: newRank,
-        name: user.displayName || 'Anonymous Seeker',
-        collectedIds: Array.from(newCollectedIds)
-      });
+      if (user.uid !== 'guest-user') {
+        const profileRef = doc(db, 'profiles', user.uid);
+        await updateDoc(profileRef, { 
+          xp: newXp, 
+          streak: newStreak,
+          rank: newRank,
+          name: user.displayName || 'Anonymous Seeker',
+          collectedIds: Array.from(newCollectedIds)
+        });
+      }
 
       // SYNC WITH QURAN FOUNDATION USER API
       fetch('/api/quran/activity', {
@@ -833,7 +861,7 @@ export default function App() {
   };
 
   if (authLoading) return <div className="h-screen w-screen bg-surface flex items-center justify-center text-on-surface font-headline-md font-bold uppercase animate-pulse">GUIDING YOUR PATH...</div>;
-  if (!user) return <LoginOverlay />;
+  if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} />;
 
   return (
     <div className="h-screen w-screen relative bg-surface overflow-hidden select-none touch-none bg-pattern">
