@@ -91,19 +91,34 @@ async function startServer() {
     body?: any;
   }) => {
     let lastFailure: { status: number; data: any; url: string } | null = null;
+    let lastException: { message: string; url: string } | null = null;
     for (const url of candidates) {
-      const resp = await fetch(url, {
-        method,
-        headers: userApiHeaders(accessToken, method !== 'GET'),
-        ...(method !== 'GET' ? { body: JSON.stringify(body || {}) } : {}),
-      });
-      const raw = await resp.text();
-      const data = parseJsonSafe(raw);
-      if (resp.ok) return { ok: true, status: resp.status, data, url };
-      lastFailure = { status: resp.status, data, url };
-      if (resp.status === 401 || resp.status === 403) break;
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers: userApiHeaders(accessToken, method !== 'GET'),
+          ...(method !== 'GET' ? { body: JSON.stringify(body || {}) } : {}),
+        });
+        const raw = await resp.text();
+        const data = parseJsonSafe(raw);
+        if (resp.ok) return { ok: true, status: resp.status, data, url };
+        lastFailure = { status: resp.status, data, url };
+        if (resp.status === 401 || resp.status === 403) break;
+      } catch (e: any) {
+        lastException = { message: e?.message || 'Network error', url };
+      }
     }
-    return { ok: false, status: lastFailure?.status || 502, data: lastFailure?.data || { error: 'No successful provider response' }, url: lastFailure?.url || null };
+    return {
+      ok: false,
+      status: lastFailure?.status || 502,
+      data:
+        lastFailure?.data ||
+        {
+          error: 'No successful provider response',
+          providerError: lastException?.message || 'Unknown provider error',
+        },
+      url: lastFailure?.url || lastException?.url || null
+    };
   };
 
   // Auth Initiation
@@ -458,39 +473,43 @@ async function startServer() {
         `${quranUserApiBase}/v1/users/me?qdc=true`,
       ].filter(Boolean) as string[];
       for (const url of reflectProfileCandidates) {
-        const resp = await fetch(url, {
-          headers: {
-            'x-auth-token': accessToken,
-            'x-client-id': process.env.QURAN_CLIENT_ID || '',
-            Accept: 'application/json',
-          },
-        });
-        const raw = await resp.text();
-        const data = parseJsonSafe(raw);
-        if (!resp.ok) continue;
-        const payload = data?.data || data?.user || data;
-        const fullName = [payload?.firstName, payload?.lastName].filter(Boolean).join(' ').trim();
-        const profile = {
-          id: payload?.id || tokenSub || null,
-          username: payload?.username || tokenUsername || null,
-          name: fullName || payload?.name || payload?.display_name || payload?.username || tokenUsername || null,
-          email: payload?.email || payload?.qdc?.email || null,
-          avatar:
-            payload?.photoUrl ||
-            payload?.avatar ||
-            payload?.avatarUrl ||
-            payload?.avatarUrls?.medium ||
-            payload?.avatarUrls?.small ||
-            payload?.avatarUrls?.large ||
-            payload?.qdc?.photoUrl ||
-            null,
-        };
-        if (profile.id || profile.name || profile.username || profile.email || profile.avatar) {
-          return res.json({
-            profile,
-            source: url,
-            ...(debug ? { debug: { payloadKeys: Object.keys(payload || {}) } } : {})
+        try {
+          const resp = await fetch(url, {
+            headers: {
+              'x-auth-token': accessToken,
+              'x-client-id': process.env.QURAN_CLIENT_ID || '',
+              Accept: 'application/json',
+            },
           });
+          const raw = await resp.text();
+          const data = parseJsonSafe(raw);
+          if (!resp.ok) continue;
+          const payload = data?.data || data?.user || data;
+          const fullName = [payload?.firstName, payload?.lastName].filter(Boolean).join(' ').trim();
+          const profile = {
+            id: payload?.id || tokenSub || null,
+            username: payload?.username || tokenUsername || null,
+            name: fullName || payload?.name || payload?.display_name || payload?.username || tokenUsername || null,
+            email: payload?.email || payload?.qdc?.email || null,
+            avatar:
+              payload?.photoUrl ||
+              payload?.avatar ||
+              payload?.avatarUrl ||
+              payload?.avatarUrls?.medium ||
+              payload?.avatarUrls?.small ||
+              payload?.avatarUrls?.large ||
+              payload?.qdc?.photoUrl ||
+              null,
+          };
+          if (profile.id || profile.name || profile.username || profile.email || profile.avatar) {
+            return res.json({
+              profile,
+              source: url,
+              ...(debug ? { debug: { payloadKeys: Object.keys(payload || {}) } } : {})
+            });
+          }
+        } catch {
+          continue;
         }
       }
 
@@ -517,15 +536,19 @@ async function startServer() {
 
       for (const url of candidates) {
         for (const headers of headerVariants) {
-          const resp = await fetch(url, { headers });
-          const raw = await resp.text();
           let data: any = null;
           try {
-            data = JSON.parse(raw);
+            const resp = await fetch(url, { headers });
+            const raw = await resp.text();
+            try {
+              data = JSON.parse(raw);
+            } catch {
+              data = { raw };
+            }
+            if (!resp.ok) continue;
           } catch {
-            data = { raw };
+            continue;
           }
-          if (!resp.ok) continue;
 
           const payload = data?.data || data?.user || data;
           const profileNode = payload?.profile || payload?.attributes || payload;
@@ -620,7 +643,7 @@ async function startServer() {
 
       return res.json({ profile: null, source: 'unavailable' });
     } catch (e: any) {
-      return res.status(500).json({ error: 'Failed to fetch profile', message: e?.message || 'Unknown error' });
+      return res.json({ profile: null, source: 'fallback', error: e?.message || 'Unknown error' });
     }
   });
 
@@ -634,10 +657,13 @@ async function startServer() {
         `${quranUserApiBase}/goals/v1/goals`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
+        return res.json({ goals: [], degraded: true, provider: result.data });
+      }
       return res.json(result.data);
     } catch (e: any) {
-      return res.status(500).json({ error: 'Failed to fetch goals', message: e?.message || 'Unknown error' });
+      return res.json({ goals: [], degraded: true, error: e?.message || 'Unknown error' });
     }
   });
 
@@ -668,10 +694,13 @@ async function startServer() {
         `${quranUserApiBase}/notes/v1/notes`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
+        return res.json({ notes: [], degraded: true, provider: result.data });
+      }
       return res.json(result.data);
     } catch (e: any) {
-      return res.status(500).json({ error: 'Failed to fetch notes', message: e?.message || 'Unknown error' });
+      return res.json({ notes: [], degraded: true, error: e?.message || 'Unknown error' });
     }
   });
 
@@ -702,10 +731,13 @@ async function startServer() {
         `${quranUserApiBase}/collections/v1/collections`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
+        return res.json({ collections: [], degraded: true, provider: result.data });
+      }
       return res.json(result.data);
     } catch (e: any) {
-      return res.status(500).json({ error: 'Failed to fetch collections', message: e?.message || 'Unknown error' });
+      return res.json({ collections: [], degraded: true, error: e?.message || 'Unknown error' });
     }
   });
 
