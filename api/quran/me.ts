@@ -77,6 +77,10 @@ export default async function handler(req: any, res: any) {
 
     return res.json({ profile: null, source: 'unavailable' });
   } catch (e: any) {
-    return res.status(500).json({ error: 'Failed to fetch profile', message: e?.message || 'Unknown error' });
+    return res.status(500).json({
+      error: 'Failed to fetch profile',
+      message: e?.message || 'Unknown error',
+      hint: 'Check QURAN_USER_API_BASE and OAuth environment alignment (prelive vs production).',
+    });
   }
 }

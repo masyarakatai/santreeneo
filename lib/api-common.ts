@@ -71,22 +71,32 @@ export const proxyUserApiFirstSuccess = async ({
   body?: any;
 }) => {
   let lastFailure: { status: number; data: any; url: string } | null = null;
+  let lastException: { message: string; url: string } | null = null;
   for (const url of candidates) {
-    const resp = await fetch(url, {
-      method,
-      headers: userApiHeaders(accessToken, method !== "GET"),
-      ...(method !== "GET" ? { body: JSON.stringify(body || {}) } : {}),
-    });
-    const raw = await resp.text();
-    const data = parseJsonSafe(raw);
-    if (resp.ok) return { ok: true, status: resp.status, data, url };
-    lastFailure = { status: resp.status, data, url };
-    if (resp.status === 401 || resp.status === 403) break;
+    try {
+      const resp = await fetch(url, {
+        method,
+        headers: userApiHeaders(accessToken, method !== "GET"),
+        ...(method !== "GET" ? { body: JSON.stringify(body || {}) } : {}),
+      });
+      const raw = await resp.text();
+      const data = parseJsonSafe(raw);
+      if (resp.ok) return { ok: true, status: resp.status, data, url };
+      lastFailure = { status: resp.status, data, url };
+      if (resp.status === 401 || resp.status === 403) break;
+    } catch (e: any) {
+      lastException = { message: e?.message || "Network error", url };
+    }
   }
   return {
     ok: false,
     status: lastFailure?.status || 502,
-    data: lastFailure?.data || { error: "No successful provider response" },
-    url: lastFailure?.url || null,
+    data:
+      lastFailure?.data || {
+        error: "No successful provider response",
+        providerError: lastException?.message || "Unknown provider error",
+        providerUrl: lastException?.url || null,
+      },
+    url: lastFailure?.url || lastException?.url || null,
   };
 };
