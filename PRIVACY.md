@@ -23,7 +23,7 @@ We integrate with:
 * **Mapbox/Leaflet:** For displaying the map interface.
 
 ## 5. Your Rights
-You can request the deletion of your account data at any time by contacting us through our official GitHub repository.
+You can request the deletion of your account data at any time by contacting us at **santreedigitalid@gmail.com**.
 
 ## 6. Contact Us
 If you have any questions or concerns about this Privacy Policy, please contact us at **santreedigitalid@gmail.com**.

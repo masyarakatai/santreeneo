@@ -20,4 +20,4 @@ If you choose to use the "Login with Quran.com" feature, you agree to allow Ayah
 AyahQuest is a tool for learning and engagement. While we strive for accuracy by using verified sources, the app should be used as a supplement to, not a replacement for, traditional scholarly learning.
 
 ## 6. Contact
-For any questions regarding these terms, please contact us via email at **santreedigitalid@gmail.com** or through our GitHub repository: masyarakatai/santreeneo.
+For any questions regarding these terms, please contact us via email at **santreedigitalid@gmail.com**.
