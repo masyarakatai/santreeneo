@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
 import express from "express";
 import path from "path";
-import { createServerClient } from "@quranjs/api/server";
 
 dotenv.config();
 
@@ -43,25 +42,6 @@ async function startServer() {
   );
   scopeSet.add("user");
   const oauthScope = Array.from(scopeSet).join(" ");
-  let quranServer: ReturnType<typeof createServerClient> | null = null;
-  let quranServerInitTried = false;
-  const getQuranServer = () => {
-    if (quranServerInitTried) return quranServer;
-    quranServerInitTried = true;
-    try {
-      quranServer = createServerClient({
-        clientId: process.env.QURAN_CLIENT_ID || '',
-        clientSecret: process.env.QURAN_CLIENT_SECRET || '',
-        services: {
-          oauth2BaseUrl: oauthBaseUrl
-        }
-      });
-    } catch (e: any) {
-      console.error("[QURAN_SDK_INIT_FAILED]", e?.message || "Unknown error");
-      quranServer = null;
-    }
-    return quranServer;
-  };
   const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
   const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
     ? quranUserApiBaseRaw.replace(/\/+$/, "")
@@ -325,16 +305,6 @@ async function startServer() {
   app.get("/api/quran/chapter-info/:chapterId", async (req, res) => {
     try {
       const chapterId = req.params.chapterId;
-      try {
-        const sdk = getQuranServer();
-        if (sdk) {
-          const info = await sdk.content.v4.chapters.getInfo(chapterId as any);
-          return res.json(info);
-        }
-      } catch (sdkError: any) {
-        console.warn("[API] SDK chapter-info failed, falling back to public API:", sdkError?.message);
-      }
-
       const fallbackResp = await fetch(`https://api.quran.com/api/v4/chapters/${chapterId}/info?language=id`);
       const fallbackRaw = await fallbackResp.text();
       let fallbackData: any;
