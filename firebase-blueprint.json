@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "Waypoint": {
+      "title": "Waypoint",
+      "description": "A scroll location on the map with a riddle.",
+      "type": "object",
+      "properties": {
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "riddle": { "type": "string" },
+        "answer": { "type": "string" },
+        "icon": { "type": "string" },
+        "points": { "type": "number" }
+      },
+      "required": ["lat", "lng", "riddle", "answer", "points"]
+    },
+    "Profile": {
+      "title": "User Profile",
+      "description": "User's progress and stats.",
+      "type": "object",
+      "properties": {
+        "xp": { "type": "number" },
+        "rank": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["xp", "rank", "userId"]
+    }
+  },
+  "firestore": {
+    "waypoints": {
+      "schema": "Waypoint",
+      "description": "Collection of all game waypoints."
+    },
+    "profiles": {
+      "schema": "Profile",
+      "description": "User profile data, keyed by UID."
+    }
+  }
+}

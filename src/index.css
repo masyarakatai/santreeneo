@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=Noto+Serif:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+@theme {
+  --font-headline-lg-mobile: "Inter", sans-serif;
+  --font-label-bold: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-headline-lg: "Inter", sans-serif;
+  --font-display-lg: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-arabic-display: "Noto Serif", serif;
+  --font-headline-md: "Inter", sans-serif;
+
+  --color-background: #f6fbf0;
+  --color-on-secondary-container: #636356;
+  --color-surface: #f6fbf0;
+  --color-on-secondary-fixed: #1c1c12;
+  --color-error-container: #ffdad6;
+  --color-tertiary: #9d365f;
+  --color-on-tertiary-fixed: #3e001d;
+  --color-surface-dim: #d7dcd1;
+  --color-inverse-primary: #82db7e;
+  --color-on-surface-variant: #40493d;
+  --color-surface-container: #ebf0e5;
+  --color-on-error: #ffffff;
+  --color-on-primary: #ffffff;
+  --color-on-surface: #181d17;
+  --color-tertiary-fixed: #ffd9e2;
+  --color-error: #ba1a1a;
+  --color-on-tertiary-container: #fffbff;
+  --color-on-error-container: #93000a;
+  --color-surface-container-highest: #dfe4d9;
+  --color-primary-container: #2e8534;
+  --color-secondary-fixed: #e5e3d2;
+  --color-secondary-fixed-dim: #c8c7b6;
+  --color-on-primary-fixed-variant: #005312;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-fixed-variant: #822049;
+  --color-on-primary-fixed: #002204;
+  --color-on-secondary-fixed-variant: #47483b;
+  --color-surface-tint: #106d20;
+  --color-inverse-on-surface: #eef2e7;
+  --color-on-primary-container: #f7fff1;
+  --color-secondary: #5f5f52;
+  --color-primary: #0b6b1d;
+  --color-tertiary-container: #bc4f77;
+  --color-outline-variant: #bfcab9;
+  --color-on-background: #181d17;
+  --color-surface-variant: #dfe4d9;
+  --color-outline: #707a6c;
+  --color-secondary-container: #e2e0cf;
+  --color-on-secondary: #ffffff;
+  --color-surface-container-high: #e5eadf;
+  --color-surface-container-lowest: #ffffff;
+  --color-primary-fixed-dim: #82db7e;
+  --color-primary-fixed: #9df898;
+  --color-tertiary-fixed-dim: #ffb1c8;
+  --color-inverse-surface: #2d322b;
+  --color-surface-bright: #f6fbf0;
+  --color-surface-container-low: #f0f5ea;
+  --color-brand-accent: #D4FF00;
+  --color-brand-neon: #D4FF00;
+  --color-brand-primary: #388E3C;
+  --color-brand-secondary: #FFFDEB;
+  --color-parchment: #FFFDEB;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: var(--font-body-md);
+    overflow: hidden; /* For game-like feel */
+  }
+}
+
+.bg-pattern {
+  background-color: #f6fbf0;
+  background-image: 
+      radial-gradient(#dfe4d9 20%, transparent 20%),
+      radial-gradient(#dfe4d9 20%, transparent 20%);
+  background-size: 50px 50px;
+  background-position: 0 0, 25px 25px;
+}
+
+.neubrutalism-shadow {
+  box-shadow: 6px 6px 0px 0px rgba(34, 26, 20, 1);
+}
+
+.neubrutalism-active:active {
+  transform: translate(6px, 6px);
+  box-shadow: 0px 0px 0px 0px rgba(34, 26, 20, 1);
+}
+
+.hard-shadow {
+  box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+}
+
+.neubrutalist-border {
+  border: 4px solid #221a14;
+}
+
+.neubrutalist-interaction:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+}
+
+.neubrutalist-interaction:active {
+  transform: translate(6px, 6px);
+  box-shadow: 0px 0px 0px 0px rgba(0,0,0,1);
+}
+
+.modal-bg-pattern {
+  background-image: radial-gradient(#221a14 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-color: #fff8f5;
+}
+
+@keyframes pulse-green {
+  0% { box-shadow: 6px 6px 0px 0px rgba(11, 107, 29, 1); }
+  50% { box-shadow: 8px 8px 0px 0px rgba(46, 133, 52, 1); }
+  100% { box-shadow: 6px 6px 0px 0px rgba(11, 107, 29, 1); }
+}
+
+.selected-word {
+  animation: pulse-green 1.5s infinite;
+  border-color: #0b6b1d;
+}
+
+.map-path {
+  stroke: #0b6b1d;
+  stroke-width: 4;
+  stroke-dasharray: 10 10;
+  fill: none;
+  animation: dash 20s linear infinite;
+}
+
+@keyframes dash {
+  to {
+      stroke-dashoffset: -100;
+  }
+}
+
+.marker-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(202, 243, 0, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(202, 243, 0, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(202, 243, 0, 0); }
+}
+
+@keyframes bounce-bar {
+  0%, 100% { transform: scaleY(0.2); }
+  50% { transform: scaleY(1); }
+}
+
+.visualizer-bar {
+  transform-origin: bottom;
+  animation: bounce-bar 1.2s infinite ease-in-out;
+}
+.visualizer-bar:nth-child(1) { animation-delay: 0.1s; animation-duration: 1.1s; }
+.visualizer-bar:nth-child(2) { animation-delay: 0.3s; animation-duration: 0.9s; }
+.visualizer-bar:nth-child(3) { animation-delay: 0.0s; animation-duration: 1.3s; }
+.visualizer-bar:nth-child(4) { animation-delay: 0.4s; animation-duration: 1.0s; }
+.visualizer-bar:nth-child(5) { animation-delay: 0.2s; animation-duration: 1.2s; }
+.visualizer-bar:nth-child(6) { animation-delay: 0.5s; animation-duration: 0.8s; }
+.visualizer-bar:nth-child(7) { animation-delay: 0.1s; animation-duration: 1.4s; }
+
+
+/* Custom leaflet marker styling to prevent backgrounds and borders */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Style Leaflet controls to match neubrutalism */
+.leaflet-control-zoom {
+  border: 4px solid #221a14 !important;
+  box-shadow: 6px 6px 0px 0px rgba(34, 26, 20, 1) !important;
+  border-radius: 9999px !important;
+  overflow: hidden;
+}
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+  background: #fff8f5 !important;
+  color: #221a14 !important;
+  border: none !important;
+}
+.leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+  background: #fcebe1 !important;
+}
+
+/* Map specific styling */
+.leaflet-container {
+  background: #e7d7cd !important;
+}

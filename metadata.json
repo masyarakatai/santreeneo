@@ -1,0 +1,10 @@
+{
+  "name": "Santree Go",
+  "description": "A mobile-first, Pokémon GO-inspired Islamic educational adventure. Explore your surroundings to collect 'NUR' by solving wisdom riddles.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
