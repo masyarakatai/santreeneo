@@ -1,9 +1,26 @@
-import { authFromHeader, decodeJwtPayloadSafe, oauthBaseUrl, parseJsonSafe, quranUserApiBase } from "../../lib/api-common";
-
 export default async function handler(req: any, res: any) {
   try {
-    const accessToken = authFromHeader(req);
+    const authHeader = req.headers?.authorization;
+    const accessToken = authHeader ? String(authHeader).replace(/^Bearer\s+/i, "") : null;
     if (!accessToken) return res.status(401).json({ error: 'Unauthorized' });
+    const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
+    const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
+    const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
+      ? quranUserApiBaseRaw.replace(/\/+$/, "")
+      : `${quranUserApiBaseRaw.replace(/\/+$/, "")}/quran-reflect`;
+    const parseJsonSafe = (raw: string) => { try { return JSON.parse(raw); } catch { return { raw }; } };
+    const decodeJwtPayloadSafe = (token?: string) => {
+      try {
+        if (!token) return null;
+        const parts = token.split(".");
+        if (parts.length < 2) return null;
+        const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+        return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+      } catch {
+        return null;
+      }
+    };
     const debug = String(req.query.debug || '0') === '1';
     const claims = decodeJwtPayloadSafe(accessToken);
     const tokenSub = claims?.sub ? String(claims.sub) : null;
