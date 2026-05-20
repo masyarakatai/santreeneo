@@ -1,6 +1,16 @@
-import { oauthBaseUrl, parseCookies } from "../../../lib/api-common";
-
 export default async function handler(req: any, res: any) {
+  const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
+  const parseCookies = (cookieHeader?: string) => {
+    const out: Record<string, string> = {};
+    if (!cookieHeader) return out;
+    for (const pair of cookieHeader.split(";")) {
+      const [rawKey, ...rawVal] = pair.trim().split("=");
+      if (!rawKey) continue;
+      out[decodeURIComponent(rawKey)] = decodeURIComponent(rawVal.join("="));
+    }
+    return out;
+  };
+
   const { code, error, error_description, state } = req.query || {};
   if (error) return res.redirect(`/?quran_login=error&reason=${encodeURIComponent(error_description || error)}`);
   if (!code) return res.redirect('/?quran_login=error&reason=no_code_received');
