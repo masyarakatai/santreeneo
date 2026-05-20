@@ -44,7 +44,8 @@ async function startServer() {
       
       // Request only minimum mandatory scopes for 100% success rate
       const scope = 'openid profile';
-      const state = Math.random().toString(36).substring(7);
+      // Generate a stronger state (at least 16 chars) to satisfy security requirements
+      const state = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 
       const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
       
