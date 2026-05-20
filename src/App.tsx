@@ -211,12 +211,14 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
             <span className="flex-1 py-5 px-3 text-center">{t.loginQuran}</span>
           </button>
 
-          <button 
-            onClick={onGuestLogin}
-            className="w-full bg-surface text-on-surface font-label-bold py-3 rounded-xl flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed text-xs opacity-70"
-          >
-            {t.guest}
-          </button>
+          {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+            <button 
+              onClick={onGuestLogin}
+              className="w-full bg-surface text-on-surface font-label-bold py-3 rounded-xl flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed text-xs opacity-70"
+            >
+              {t.guest}
+            </button>
+          )}
         </div>
         <p className="text-[11px] text-on-surface italic px-4 leading-relaxed">{t.loginSubtitle}</p>
       </motion.div>
@@ -1938,10 +1940,13 @@ export default function App() {
           });
         }
       } else {
-        // Only set loading false and user null if we are NOT in the middle of a Quran login
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('quran_login') !== 'success') {
-          setUser(null);
+        // Keep Quran auth session if available, do not force jump to login page.
+        const cachedQuranAuthRaw = localStorage.getItem(QURAN_AUTH_STORAGE_KEY);
+        if (!cachedQuranAuthRaw) {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('quran_login') !== 'success') {
+            setUser(null);
+          }
         }
       }
       setAuthLoading(false);
@@ -1958,6 +1963,7 @@ export default function App() {
   const createGoal = async () => {
     if (!user?.isQuranAuth || !user?.accessToken) return;
     const payload = { title: 'Daily Ayah Goal', target: Number(goalGoal) || 7 };
+    setSyncStatus('syncing');
     try {
       const res = await fetch('/api/quran/goals', {
         method: 'POST',
@@ -1972,6 +1978,7 @@ export default function App() {
       queueSyncItem('/api/quran/goals', payload);
       setGoals((prev) => [...prev, { id: `local-goal-${Date.now()}`, title: payload.title, target: payload.target, progress: 0 }]);
       setGoalTitle('');
+      setSyncStatus('pending');
     }
   };
 
@@ -1980,6 +1987,7 @@ export default function App() {
     const verseKey = verseKeyInput || selectedWaypoint?.ayahKey || Array.from(collectedIds)[0] || '2:255';
     const payload = { verse_key: verseKey, content: contentInput };
     if (!payload.content.trim()) return;
+    setSyncStatus('syncing');
     try {
       const res = await fetch('/api/quran/notes', {
         method: 'POST',
@@ -1992,6 +2000,7 @@ export default function App() {
     } catch {
       queueSyncItem('/api/quran/notes', payload);
       setNotes((prev) => [...prev, { id: `local-note-${Date.now()}`, verseKey, content: payload.content }]);
+      setSyncStatus('pending');
     }
   };
 
@@ -2005,6 +2014,7 @@ export default function App() {
   const createCollection = async () => {
     if (!user?.isQuranAuth || !user?.accessToken || !collectionName.trim()) return;
     const payload = { name: collectionName.trim() };
+    setSyncStatus('syncing');
     try {
       const res = await fetch('/api/quran/collections', {
         method: 'POST',
@@ -2019,6 +2029,7 @@ export default function App() {
       queueSyncItem('/api/quran/collections', payload);
       setCollectionsData((prev) => [...prev, { id: `local-col-${Date.now()}`, name: payload.name, count: 0 }]);
       setCollectionName('');
+      setSyncStatus('pending');
     }
   };
 
@@ -2038,7 +2049,9 @@ export default function App() {
         wps.push({ id: doc.id, ...doc.data() } as Waypoint);
       });
       
-      if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Arabic text unavailable")) {
+      const fallbackCount = wps.filter((w) => w.ayahKey === '2:255').length;
+      const fallbackDominant = wps.length > 0 && fallbackCount / wps.length > 0.6;
+      if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Arabic text unavailable") || fallbackDominant) {
         // Generate random points with varying distances
         const waypointPromises = Array.from({ length: 60 }, async (_, i) => {
           // Angle in radians
@@ -2091,14 +2104,16 @@ export default function App() {
             } as any;
           } catch(e) {
              // Fallback
+             const randomSurah = Math.floor(Math.random() * 114) + 1;
+             const randomAyah = Math.floor(Math.random() * 7) + 1;
              return {
                id: Math.random().toString(36).substring(7),
                lat,
                lng,
-               ayahKey: "2:255",
-               arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
-               translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
-               points: 25
+               ayahKey: `${randomSurah}:${randomAyah}`,
+               arabicText: "Arabic text unavailable",
+               translation: "Translation unavailable",
+               points: 15
              } as any;
           }
         });
@@ -3132,6 +3147,13 @@ export default function App() {
           to { transform: rotate(360deg); }
         }
       `}} />
+      {syncStatus === 'syncing' && (
+        <div className="fixed inset-0 z-[4000] bg-on-surface/35 backdrop-blur-[2px] flex items-center justify-center">
+          <div className="bg-surface border-4 border-on-surface rounded-2xl hard-shadow px-5 py-4 text-center">
+            <p className="text-xs font-label-bold uppercase tracking-widest animate-pulse">Syncing your progress...</p>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

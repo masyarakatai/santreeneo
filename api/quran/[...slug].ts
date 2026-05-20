@@ -1,5 +1,9 @@
 export default async function handler(req: any, res: any) {
   try {
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Allow', 'GET,POST,OPTIONS');
+      return res.status(200).end();
+    }
     const slugParts = Array.isArray(req.query?.slug)
       ? req.query.slug
       : String(req.query?.slug || '').split('/').filter(Boolean);
