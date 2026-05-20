@@ -2100,30 +2100,36 @@ export default function App() {
     return Number.isFinite(minRemaining) ? minRemaining : 0;
   }, [waypoints, activeCollectedIds, collectedAtMap, collectedCooldownMap, nowTs]);
 
+  const topUpWaypoints = useCallback(async () => {
+    if (!user || locationStatus !== 'found') return;
+    if (isTopUpRunningRef.current) return;
+    const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
+    const minActiveTarget = 10;
+    if (activeCount >= minActiveTarget) return;
+    isTopUpRunningRef.current = true;
+    try {
+      const toCreate = Math.min(4, minActiveTarget - activeCount);
+      const created = await Promise.all(
+        Array.from({ length: toCreate }, () => generateDynamicWaypoint(coords))
+      );
+      setWaypoints((prev) => {
+        const keys = new Set(prev.map((p) => p.ayahKey));
+        const unique = created.filter((c) => !keys.has(c.ayahKey));
+        return [...prev, ...unique];
+      });
+    } finally {
+      isTopUpRunningRef.current = false;
+    }
+  }, [activeCollectedIds, coords, generateDynamicWaypoint, locationStatus, user, waypoints]);
+
   useEffect(() => {
     if (!user || locationStatus !== 'found') return;
-    const timer = window.setInterval(async () => {
-      if (isTopUpRunningRef.current) return;
-      const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
-      const minActiveTarget = 10;
-      if (activeCount >= minActiveTarget) return;
-      isTopUpRunningRef.current = true;
-      try {
-        const toCreate = Math.min(3, minActiveTarget - activeCount);
-        const created = await Promise.all(
-          Array.from({ length: toCreate }, () => generateDynamicWaypoint(coords))
-        );
-        setWaypoints((prev) => {
-          const keys = new Set(prev.map((p) => p.ayahKey));
-          const unique = created.filter((c) => !keys.has(c.ayahKey));
-          return [...prev, ...unique];
-        });
-      } finally {
-        isTopUpRunningRef.current = false;
-      }
-    }, 45000);
+    topUpWaypoints().catch(() => {});
+    const timer = window.setInterval(() => {
+      topUpWaypoints().catch(() => {});
+    }, 20000);
     return () => window.clearInterval(timer);
-  }, [user, locationStatus, coords, waypoints, activeCollectedIds, generateDynamicWaypoint]);
+  }, [user, locationStatus, topUpWaypoints]);
   const formatCountdown = (ms: number) => {
     const total = Math.max(0, Math.floor(ms / 1000));
     const h = Math.floor(total / 3600);
@@ -2540,7 +2546,17 @@ export default function App() {
               {lockNotice}
             </div>
           )}
-          {availableWaypointCount === 0 && (
+          {waypoints.length === 0 && (
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[92%] max-w-md bg-surface neubrutalist-border hard-shadow rounded-2xl p-4 text-on-surface">
+              <h3 className="font-headline-md font-bold text-sm uppercase tracking-wide">
+                {appLang === 'id' ? 'Menyiapkan waypoint...' : 'Preparing waypoints...'}
+              </h3>
+              <p className="text-[11px] mt-1">
+                {appLang === 'id' ? 'Mohon tunggu, sistem sedang menyiapkan ayat di sekitar Anda.' : 'Please wait, we are preparing nearby verses for you.'}
+              </p>
+            </div>
+          )}
+          {waypoints.length > 0 && availableWaypointCount === 0 && (
             <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[92%] max-w-md bg-surface neubrutalist-border hard-shadow rounded-2xl p-4 text-on-surface">
               <h3 className="font-headline-md font-bold text-sm uppercase tracking-wide">
                 {appLang === 'id' ? 'Waypoint sekitar sudah selesai' : 'Nearby waypoints are completed'}
