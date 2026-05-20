@@ -2776,13 +2776,35 @@ export default function App() {
             </div>
           )}
           {waypoints.length === 0 && (
-            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[92%] max-w-md bg-surface neubrutalist-border hard-shadow rounded-2xl p-4 text-on-surface">
-              <h3 className="font-headline-md font-bold text-sm uppercase tracking-wide">
-                'Preparing waypoints...'
-              </h3>
-              <p className="text-[11px] mt-1">
-                'Please wait, we are preparing nearby verses for you.'
-              </p>
+            <div className="absolute inset-0 z-[2000] flex items-center justify-center bg-background/60 backdrop-blur-md">
+              <div className="flex flex-col items-center">
+                {/* Minimalist Pulsing Compass */}
+                <div className="relative w-20 h-20 mb-6">
+                  <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-[ping_2s_infinite]"></div>
+                  <div className="absolute inset-0 border-2 border-on-surface/10 rounded-full"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-4xl text-primary animate-[pulse_2s_infinite]">explore</span>
+                  </div>
+                  {/* Rotating Inner Ring */}
+                  <div className="absolute inset-0 border-t-4 border-brand-neon rounded-full animate-spin"></div>
+                </div>
+
+                <div className="text-center space-y-1">
+                  <h3 className="font-headline-md font-bold text-lg uppercase tracking-[0.2em] text-on-surface">
+                    Initializing
+                  </h3>
+                  <p className="text-[10px] font-label-bold uppercase tracking-widest text-on-surface/40 animate-pulse">
+                    Mapping Nearby Verses
+                  </p>
+                </div>
+
+                {/* Subtle Dot Progress */}
+                <div className="mt-8 flex gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
+                </div>
+              </div>
             </div>
           )}
           {waypoints.length > 0 && availableWaypointCount === 0 && (
