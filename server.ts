@@ -34,7 +34,15 @@ async function startServer() {
   });
 
   const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
-  const oauthScope = process.env.QURAN_OAUTH_SCOPE || "openid profile";
+  const requestedScope = process.env.QURAN_OAUTH_SCOPE || "openid profile";
+  const scopeSet = new Set(
+    requestedScope
+      .split(/\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  scopeSet.add("user");
+  const oauthScope = Array.from(scopeSet).join(" ");
   const quranServer = createServerClient({
     clientId: process.env.QURAN_CLIENT_ID || '',
     clientSecret: process.env.QURAN_CLIENT_SECRET || '',
@@ -95,8 +103,7 @@ async function startServer() {
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
       
-      // Reverting to bare minimum mandatory scopes to guarantee 100% success rate for the demo.
-      // This ensures juri can log in without any 'invalid scope' errors.
+      // Always request `user` scope so profile/username can be fetched after login.
       const state = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
       const secureCookie = protocol === "https" ? "; Secure" : "";
       res.setHeader("Set-Cookie", `quran_oauth_state=${encodeURIComponent(state)}; Path=/api/auth/quran/callback; HttpOnly; SameSite=Lax${secureCookie}; Max-Age=600`);
@@ -174,8 +181,10 @@ async function startServer() {
   // Proxy Quran APIs
   app.get("/api/quran/random-verse", async (req, res) => {
     try {
+      const lang = req.query.language === 'en' ? 'en' : 'id';
+      const translationId = lang === 'id' ? '33' : '20';
       const audioId = String(req.query.audio || '7');
-      const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=id&translations=33&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+      const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
       res.json(await resp.json());
     } catch (e) {
       res.status(500).json({ error: 'Failed' });
@@ -187,6 +196,8 @@ async function startServer() {
       const lat = Number(req.query.lat);
       const lng = Number(req.query.lng);
       const audioId = String(req.query.audio || '7');
+      const lang = req.query.language === 'en' ? 'en' : 'id';
+      const translationId = lang === 'id' ? '33' : '20';
       const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
 
       let contextTheme: 'prayer' | 'trade' | 'nature' | 'general' = 'general';
@@ -231,12 +242,12 @@ async function startServer() {
       const pool = themedVersePools[contextTheme] || themedVersePools.general;
       const chosen = pool[Math.floor(Math.random() * pool.length)];
       const byKeyResp = await fetch(
-        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=id&translations=33&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`
+        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`
       );
       const byKeyData: any = await byKeyResp.json();
 
       if (!byKeyResp.ok || !byKeyData?.verse) {
-        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=id&translations=33&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
         const fallback: any = await resp.json();
         const verse = fallback?.verse || fallback;
         return res.json({
@@ -633,7 +644,8 @@ async function startServer() {
   app.get("/api/quran/verse-insight/:verseKey", async (req, res) => {
     try {
       const verseKey = req.params.verseKey;
-      const lang = req.query.lang === 'id' ? 'id' : 'en';
+      const lang = req.query.language === 'en' ? 'en' : 'id';
+      const includeTafsir = String(req.query.tafsir || '0') === '1';
       const translationIds = lang === 'id' ? '33,20' : '20,33';
       const tafsirIdsPrimary = lang === 'id' ? '168,169' : '169,168';
       const tafsirIdsFallback = lang === 'id' ? '169,168' : '168,169';
@@ -648,7 +660,7 @@ async function startServer() {
       }
 
       const translations = verseData.verse.translations || [];
-      let tafsirs = verseData.verse.tafsirs || [];
+      let tafsirs = includeTafsir ? (verseData.verse.tafsirs || []) : [];
 
       const translation =
         translations.find((t: any) => (t?.language_name || '').toLowerCase().includes(lang === 'id' ? 'indones' : 'english'))?.text ||
@@ -656,7 +668,7 @@ async function startServer() {
         null;
 
       // Fallback attempt with alternate tafsir IDs/language ordering
-      if (!tafsirs || tafsirs.length === 0) {
+      if (includeTafsir && (!tafsirs || tafsirs.length === 0)) {
         const tafsirFallbackResp = await fetch(
           `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(verseKey)}?tafsirs=${tafsirIdsFallback}`
         );
@@ -664,17 +676,16 @@ async function startServer() {
         tafsirs = fallbackData?.verse?.tafsirs || [];
       }
 
-      const tafsirRaw =
-        tafsirs.find((t: any) => (t?.language_name || '').toLowerCase().includes(lang === 'id' ? 'indones' : 'english'))?.text ||
-        tafsirs[0]?.text ||
-        null;
-      const tafsir =
-        (tafsirRaw ? stripHtml(tafsirRaw) : null) ||
-        (translation
-          ? (lang === 'id'
-            ? `Ringkasan makna ayat: ${stripHtml(translation)}`
-            : `Verse meaning summary: ${stripHtml(translation)}`)
-          : null);
+      const tafsirRaw = includeTafsir
+        ? (
+            tafsirs.find((t: any) => (t?.language_name || '').toLowerCase().includes(lang === 'id' ? 'indones' : 'english'))?.text ||
+            tafsirs[0]?.text ||
+            null
+          )
+        : null;
+      const tafsir = includeTafsir
+        ? ((tafsirRaw ? stripHtml(tafsirRaw) : null) || (translation ? `Verse meaning summary: ${stripHtml(translation)}` : null))
+        : null;
 
       return res.json({ translation: translation ? stripHtml(translation) : null, tafsir, lang });
     } catch (e: any) {

@@ -76,6 +76,7 @@ const PROFILE_STYLE_AVATAR: Record<string, string> = {
   explorer: '🧭',
   seeker: '✨',
 };
+const verseInsightCache = new Map<string, string | null>();
 
 type QuranGoal = { id: string; title: string; target: number; progress: number };
 type QuranNote = { id: string; verseKey: string; content: string };
@@ -87,126 +88,75 @@ type SyncQueueItem = {
   payload: any;
   method: 'POST';
 };
+type JourneyView = 'progress' | 'replay';
 
-const UI_TEXT: Record<AppLang, Record<string, string>> = {
-  id: {
-    map: 'Peta',
-    scrolls: 'Gulungan',
-    leaders: 'Peringkat',
-    profile: 'Profil',
-    loginQuran: 'LOGIN DENGAN QURAN.COM',
-    guest: 'LANJUT SEBAGAI TAMU',
-    guiding: 'MENUNJUKKAN JALANMU...',
-    language: 'Bahasa',
-    logout: 'LOG OUT',
-    synced: 'Sinkron dengan Bookmark Quran.com',
-    claimReward: 'KLAIM REWARD',
-    loginSubtitle: 'Buka potensi Quran-mu. Kami menggunakan Quran.com untuk sinkron progres, bookmark, dan streak.',
-    locationErrorTitle: 'Gagal Menemukan Lokasi',
-    locationErrorBody: 'Pastikan izin GPS diberikan di browser Anda. Jika di preview AI Studio, buka aplikasi di tab baru.',
-    retry: 'Coba Lagi',
-    searchingLocation: 'Mencari posisi asli...',
-    locationHint: 'Akurasi lokasi di PC/Laptop mungkin kurang tepat. Buka di HP untuk GPS asli.',
-    leaderboardTitle: 'Pemimpin Spiritual',
-    collectionTitle: 'Koleksiku',
-    noAyah: 'Belum ada ayat yang ditemukan.',
-    startExplore: 'Mulai Eksplorasi',
-    savedToAccount: 'Disimpan ke Akun',
-    scrollsStat: 'Gulungan',
-    masteryStat: 'Tingkatan',
-    back: 'KEMBALI',
-    termsTitle: 'Santree Go - Syarat dan Ketentuan',
-    privacyTitle: 'Santree Go - Kebijakan Privasi',
-    effectiveDate: 'Tanggal Berlaku',
-    contactQ: 'Pertanyaan? Hubungi kami di',
-    manualLocation: 'Pilih Lokasi Manual',
-    manualLocationHint: 'GPS bermasalah? Ketik kota/kecamatan lalu pilih lokasi.',
-    searchPlaceholder: 'Contoh: Jakarta, Bandung, Surabaya',
-    search: 'Cari',
-    searching: 'Mencari...',
-    useThisLocation: 'Gunakan Lokasi Ini',
-    noLocationResults: 'Lokasi tidak ditemukan.',
-    farMode: 'DISCOVERY JARAK JAUH',
-    nearMode: 'BONUS ZONA SUCI',
-    heartsLabel: 'Nyawa',
-    puzzleFailed: 'Nyawa habis. Misi gagal untuk ayat ini.',
-    closeFailed: 'Cari gulungan lain',
-    qari: 'Qari / Reciter',
-    profileStyle: 'Gaya Profil',
-    ikhwan: 'Muslim Man',
-    akhwat: 'Muslim Woman',
-    xpToNext: 'XP ke Level Berikutnya',
-    modeArrange: 'Sambung Kata',
-    modeContinue: 'Tebak Lanjutan',
-    modeMeaning: 'Tebak Arti',
-    modeAudio: 'Tebak Surah Audio',
-    settings: 'Pengaturan',
-    impactPanel: 'Panel Dampak',
-    goalsReflections: 'Target & Refleksi',
-    saveGoal: 'Simpan Target',
-    saveNote: 'Simpan Catatan',
-    addCollection: 'Tambah',
-    syncRetry: 'Sinkron Ulang',
-  },
-  en: {
-    map: 'Map',
-    scrolls: 'Scrolls',
-    leaders: 'Leaders',
-    profile: 'Profile',
-    loginQuran: 'LOGIN WITH QURAN.COM',
-    guest: 'CONTINUE AS GUEST',
-    guiding: 'GUIDING YOUR PATH...',
-    language: 'Language',
-    logout: 'LOG OUT',
-    synced: 'Synced with Quran.com Bookmarks',
-    claimReward: 'CLAIM REWARD',
-    loginSubtitle: 'Unlock your Quranic potential. We use Quran.com to sync your progress, bookmarks, and streaks.',
-    locationErrorTitle: 'Location Not Found',
-    locationErrorBody: 'Ensure GPS permission is enabled in your browser. If you are in AI Studio preview, open the app in a new tab.',
-    retry: 'Retry',
-    searchingLocation: 'Finding your real position...',
-    locationHint: 'Location accuracy on desktop may be limited. Use mobile for real GPS.',
-    leaderboardTitle: 'Spiritual Leaders',
-    collectionTitle: 'My Collection',
-    noAyah: 'No verses found yet.',
-    startExplore: 'Start Exploring',
-    savedToAccount: 'Saved to Account',
-    scrollsStat: 'Scrolls',
-    masteryStat: 'Mastery',
-    back: 'BACK',
-    termsTitle: 'Santree Go - Terms and Conditions',
-    privacyTitle: 'Santree Go - Privacy Policy',
-    effectiveDate: 'Effective Date',
-    contactQ: 'Questions? Contact us at',
-    manualLocation: 'Manual Location',
-    manualLocationHint: 'GPS issue? Type your city/area and choose one location.',
-    searchPlaceholder: 'Example: Jakarta, Bandung, Surabaya',
-    search: 'Search',
-    searching: 'Searching...',
-    useThisLocation: 'Use This Location',
-    noLocationResults: 'No locations found.',
-    farMode: 'LONG-RANGE DISCOVERY',
-    nearMode: 'SACRED ZONE BONUS',
-    heartsLabel: 'Hearts',
-    puzzleFailed: 'Out of hearts. Mission failed for this verse.',
-    closeFailed: 'Find another scroll',
-    qari: 'Qari / Reciter',
-    profileStyle: 'Profile Style',
-    ikhwan: 'Muslim Man',
-    akhwat: 'Muslim Woman',
-    xpToNext: 'XP to Next Level',
-    modeArrange: 'Word Chain',
-    modeContinue: 'Continue Verse',
-    modeMeaning: 'Guess Meaning',
-    modeAudio: 'Audio Surah Quiz',
-    settings: 'Settings',
-    impactPanel: 'Impact Panel',
-    goalsReflections: 'Goals & Reflections',
-    saveGoal: 'Save Goal',
-    saveNote: 'Save Note',
-    addCollection: 'Add',
-    syncRetry: 'Retry Sync',
-  }
+const SURAH_AYAH_COUNTS: number[] = [
+  0,7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6
+];
+
+const UI_TEXT: Record<string, string> = {
+  map: 'Map',
+  scrolls: 'Journey',
+  leaders: 'Rank',
+  profile: 'Profile',
+  loginQuran: 'LOGIN WITH QURAN.COM',
+  guest: 'CONTINUE AS GUEST',
+  guiding: 'GUIDING YOUR PATH...',
+  language: 'Language',
+  logout: 'LOG OUT',
+  synced: 'Synced with Quran.com Bookmarks',
+  claimReward: 'CLAIM REWARD',
+  loginSubtitle: 'Unlock your Quranic potential. We use Quran.com to sync your progress, bookmarks, and streaks.',
+  locationErrorTitle: 'Location Not Found',
+  locationErrorBody: 'Ensure GPS permission is enabled in your browser. If you are in AI Studio preview, open the app in a new tab.',
+  retry: 'Retry',
+  searchingLocation: 'Finding your real position...',
+  locationHint: 'Location accuracy on desktop may be limited. Use mobile for real GPS.',
+  leaderboardTitle: 'Rank',
+  collectionTitle: 'Journey',
+  noAyah: 'No verses found yet.',
+  startExplore: 'Start Exploring',
+  savedToAccount: 'Saved to Account',
+  scrollsStat: 'Scrolls',
+  masteryStat: 'Mastery',
+  back: 'BACK',
+  termsTitle: 'Santree Go - Terms and Conditions',
+  privacyTitle: 'Santree Go - Privacy Policy',
+  effectiveDate: 'Effective Date',
+  contactQ: 'Questions? Contact us at',
+  manualLocation: 'Manual Location',
+  manualLocationHint: 'GPS issue? Type your city/area and choose one location.',
+  searchPlaceholder: 'Example: Jakarta, Bandung, Surabaya',
+  search: 'Search',
+  searching: 'Searching...',
+  useThisLocation: 'Use This Location',
+  noLocationResults: 'No locations found.',
+  farMode: 'LONG-RANGE DISCOVERY',
+  nearMode: 'SACRED ZONE BONUS',
+  heartsLabel: 'Hearts',
+  puzzleFailed: 'Out of hearts. Mission failed for this verse.',
+  closeFailed: 'Find another scroll',
+  qari: 'Qari / Reciter',
+  profileStyle: 'Profile Style',
+  ikhwan: 'Muslim Man',
+  akhwat: 'Muslim Woman',
+  xpToNext: 'XP to Next Level',
+  modeArrange: 'Word Chain',
+  modeContinue: 'Continue Verse',
+  modeMeaning: 'Guess Meaning',
+  modeAudio: 'Audio Surah Quiz',
+  settings: 'Settings',
+  impactPanel: 'Impact Panel',
+  goalsReflections: 'Goals & Reflections',
+  saveGoal: 'Save Goal',
+  saveNote: 'Save Note',
+  addCollection: 'Add',
+  syncRetry: 'Retry Sync',
+  journeyProgress: 'Surah Progress',
+  journeyReplay: 'Replay Ayahs',
+  yourRank: 'Your Rank',
+  resetSync: 'Reset Sync',
+  essence: 'Essence',
 };
 
 const SURAH_NAMES: Record<number, string> = {
@@ -233,8 +183,8 @@ const SURAH_NAMES: Record<number, string> = {
 
 // --- Components ---
 
-const LoginOverlay = ({ onGuestLogin, onQuranLogin, lang }: { onGuestLogin: () => void, onQuranLogin: () => void, lang: AppLang }) => {
-  const t = UI_TEXT[lang];
+const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void, onQuranLogin: () => void,   }) => {
+  const t = UI_TEXT;
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
       <motion.div 
@@ -283,8 +233,8 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin, lang }: { onGuestLogin: () =
   );
 };
 
-const XPHeader = ({ xp, rank, streak, lang }: { xp: number, rank: string, streak: number, lang: AppLang }) => {
-  const t = UI_TEXT[lang];
+const XPHeader = ({ xp, rank, streak }: { xp: number, rank: string, streak: number,   }) => {
+  const t = UI_TEXT;
   const level = Math.floor(xp / 100) + 1;
   const currentLevelXP = xp % 100;
 
@@ -368,6 +318,7 @@ const SmartRadar = ({
   collectedIds, 
   onWaypointClick,
   nearRange,
+  greenStartRange,
   lockRange,
   lockMaxRange
 }: { 
@@ -376,6 +327,7 @@ const SmartRadar = ({
   collectedIds: Set<string>,
   onWaypointClick: (wp: Waypoint) => void,
   nearRange: number,
+  greenStartRange: number,
   lockRange: number,
   lockMaxRange: number
 }) => {
@@ -454,7 +406,13 @@ const SmartRadar = ({
   };
 
   const visibleWaypoints = spreadOverlappingWaypoints(
-    waypoints.filter((wp) => !collectedIds.has(wp.ayahKey) && getDistanceMeters(userCoords, [wp.lat, wp.lng]) <= lockMaxRange)
+    waypoints.filter((wp) => {
+      if (collectedIds.has(wp.ayahKey)) return false;
+      const dist = getDistanceMeters(userCoords, [wp.lat, wp.lng]);
+      if (dist > lockMaxRange) return false;
+      // Leave a "quiet gap" between gold and green zones.
+      return dist <= nearRange || dist >= greenStartRange;
+    })
   );
 
   // Custom Icon for user
@@ -504,7 +462,7 @@ const SmartRadar = ({
           {visibleWaypoints.map((wp) => {
             const dist = getDistanceMeters(userCoords, [wp.lat, wp.lng]);
             const zone: 'gold' | 'green' | 'gray' =
-              dist <= nearRange ? 'gold' : dist <= lockRange ? 'green' : 'gray';
+              dist <= nearRange ? 'gold' : (dist >= greenStartRange && dist <= lockRange ? 'green' : 'gray');
             const rawLat = (wp as any).displayLat ?? wp.lat;
             const rawLng = (wp as any).displayLng ?? wp.lng;
             const rawPos: [number, number] = [rawLat, rawLng];
@@ -535,9 +493,9 @@ const SmartRadar = ({
   );
 };
 
-const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint & { isFar?: boolean, distance?: number }, onCollect: () => void, onClose: () => void, lang: AppLang }) => {
+const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void,   }) => {
   type GameMode = 'arrange' | 'continue' | 'meaning' | 'audio';
-  const t = UI_TEXT[lang];
+  const t = UI_TEXT;
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightData, setInsightData] = useState<{ translation: string | null } | null>(null);
   const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ');
@@ -621,7 +579,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     const modes: GameMode[] = ['arrange', 'continue', 'meaning', 'audio'];
     return modes[Math.floor(Math.random() * modes.length)];
   }, []);
-  const maxHearts = gameMode === 'audio' || gameMode === 'continue' ? 2 : 3;
+  const maxHearts = gameMode === 'audio' || gameMode === 'continue' || gameMode === 'meaning' ? 2 : 3;
 
   useEffect(() => {
     if (waypoint.audioUrl) {
@@ -708,25 +666,15 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   const playbackCompleted = !audioRef.current || audioDuration === 0 || audioCurrentTime >= Math.max(0, audioDuration - 0.25);
   const cleanArabicText = getCleanArabicText();
   const isLongAyah = cleanArabicText.length > 180 || cleanArabicText.split(/\s+/).length > 24;
-  const activeTranslation = insightData?.translation || waypoint.translation || (lang === 'id' ? 'Terjemahan tidak tersedia.' : 'Translation unavailable.');
+  const activeTranslation = insightData?.translation || waypoint.translation || 'Translation unavailable.';
   const isLongTranslation = activeTranslation.length > 170;
-  const decoyTranslations = useMemo(() => (
-    lang === 'id'
-      ? [
-          'Segala puji bagi Allah, Tuhan semesta alam.',
-          'Maka nikmat Tuhanmu yang manakah yang kamu dustakan?',
-          'Katakanlah: Dialah Allah Yang Maha Esa.',
-          'Dan hanya kepada-Mu kami memohon pertolongan.',
-          'Sesungguhnya Allah bersama orang-orang yang sabar.'
-        ]
-      : [
-          'All praise is due to Allah, Lord of the worlds.',
-          'So which of your Lord’s favors will you deny?',
-          'Say: He is Allah, the One.',
-          'It is You alone we worship and You alone we ask for help.',
-          'Indeed, Allah is with the patient.'
-        ]
-  ), [lang]);
+  const decoyTranslations = useMemo(() => ([
+    'All praise is due to Allah, Lord of the worlds.',
+    'So which of your Lord’s favors will you deny?',
+    'Say: He is Allah, the One.',
+    'It is You alone we worship and You alone we ask for help.',
+    'Indeed, Allah is with the patient.'
+  ]), []);
   const [surahNoStr] = (waypoint.ayahKey || '').split(':');
   const currentSurahNo = Number(surahNoStr) || 1;
   const currentSurahName = SURAH_NAMES[currentSurahNo] || `${currentSurahNo}`;
@@ -737,9 +685,16 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     if (mode === 'meaning') return t.modeMeaning;
     return t.modeAudio;
   };
+  const modePanelTone = (mode: GameMode) => {
+    if (mode === 'arrange') return "from-[#f8fff2] to-[#eefde2]";
+    if (mode === 'continue') return "from-[#f7fbff] to-[#e9f4ff]";
+    if (mode === 'meaning') return "from-[#fffaf3] to-[#fff1dc]";
+    return "from-[#f6f4ff] to-[#ede8ff]";
+  };
   const closeLocked = !!quizSelected && quizSelected !== quizCorrect;
   const requestClose = () => {
-    if (isClosing || closeLocked) return;
+    if (isClosing) return;
+    if (closeLocked && hearts > 0) return; // Only lock if they still have hearts to play with
     setIsClosing(true);
     setTimeout(() => onClose(), 220);
   };
@@ -824,18 +779,21 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   const handleQuizChoice = (choice: string) => {
     if (!quizCorrect || hearts <= 0 || quizSelected) return;
     setQuizSelected(choice);
+    
     if (choice === quizCorrect) {
       playSound('open');
     } else {
-      if (gameMode === 'audio' && hearts > 1 && audioSnippetStage < 2) {
-        const nextStage = audioSnippetStage + 1;
-        setAudioSnippetStage(nextStage);
-        setTimeout(() => {
-          setQuizSelected(null);
-          playAudioSnippet(nextStage);
-        }, 550);
-      }
       consumeHeart();
+      
+      // Allow trying another option after a delay
+      setTimeout(() => {
+        setQuizSelected(null);
+        if (gameMode === 'audio' && hearts > 1 && audioSnippetStage < 2) {
+          const nextStage = audioSnippetStage + 1;
+          setAudioSnippetStage(nextStage);
+          playAudioSnippet(nextStage);
+        }
+      }, 850);
     }
   };
 
@@ -875,14 +833,27 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = `en:${waypoint.ayahKey}`;
+    if (verseInsightCache.has(cacheKey)) {
+      const cachedTranslation = verseInsightCache.get(cacheKey);
+      setInsightData({ translation: cachedTranslation ?? waypoint.translation ?? null });
+      setInsightLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const loadInsight = async () => {
-      setInsightLoading(true);
+      // If we already have translation from waypoint payload, render instantly and refresh in background.
+      setInsightLoading(!waypoint.translation);
       try {
-        const res = await fetch(`/api/quran/verse-insight/${encodeURIComponent(waypoint.ayahKey)}?lang=${lang}`);
+        const res = await fetch(`/api/quran/verse-insight/${encodeURIComponent(waypoint.ayahKey)}?language=en&tafsir=0`);
         const data = await res.json();
         if (!cancelled && res.ok) {
+          const nextTranslation = data.translation || waypoint.translation || null;
+          verseInsightCache.set(cacheKey, nextTranslation);
           setInsightData({
-            translation: data.translation || waypoint.translation || null
+            translation: nextTranslation
           });
         }
       } catch {
@@ -899,7 +870,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     return () => {
       cancelled = true;
     };
-  }, [waypoint.ayahKey, waypoint.translation, lang]);
+  }, [waypoint.ayahKey, waypoint.translation]);
 
   useEffect(() => {
     if (gameMode === 'continue') buildContinueOptions();
@@ -920,7 +891,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   useEffect(() => {
     const picked = randomizeGameMode();
     setGameMode(picked);
-    setHearts(picked === 'audio' || picked === 'continue' ? 2 : 3);
+    setHearts(picked === 'audio' || picked === 'continue' || picked === 'meaning' ? 2 : 3);
     setSelectedWords([]);
     setQuizSelected(null);
     setQuizOptions([]);
@@ -929,13 +900,70 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     setContinueGapIndex(-1);
   }, [waypoint.id, randomizeGameMode]);
 
+  if (waypoint.replayOnly) {
+    return (
+      <div className="fixed inset-0 z-[2000] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-3">
+        <div className="border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-xl w-full max-w-sm max-h-[86vh] flex flex-col bg-brand-secondary overflow-hidden">
+          <div className="shrink-0 px-4 py-3 border-b-2 border-on-surface/20 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-label-bold uppercase tracking-widest text-on-surface">Replay Ayah</p>
+              <p className="text-xs font-label-bold text-on-surface">{waypoint.ayahKey}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full border-2 border-on-surface bg-surface text-on-surface hard-shadow flex items-center justify-center"
+              aria-label='Close replay'
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+            <div className="bg-white border-2 border-on-surface rounded-xl p-3">
+              <p className="font-arabic-display text-2xl leading-[2.05] text-right" dir="rtl">{cleanArabicText || '...'}</p>
+            </div>
+
+            <div className="bg-surface border-2 border-on-surface rounded-xl p-2.5">
+              <p className="text-[10px] font-label-bold uppercase tracking-widest mb-1">Translation</p>
+              <p className="text-xs italic">"{insightData?.translation || waypoint.translation || 'Translation unavailable.'}"</p>
+            </div>
+
+            <div className="bg-white border-2 border-on-surface rounded-xl p-3">
+              <div className="flex justify-center mb-2">
+                <button
+                  onClick={toggleAudio}
+                  disabled={!audioRef.current}
+                  className={cn(
+                    "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center",
+                    !audioRef.current && "opacity-50"
+                  )}
+                >
+                  <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    {isPlaying ? 'pause' : 'play_arrow'}
+                  </span>
+                </button>
+              </div>
+              <div className="h-2 w-full bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
+                <div className="h-full bg-primary transition-all duration-200" style={{ width: `${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%` }} />
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] font-label-bold text-on-surface">
+                <span>{formatPlaybackTime(audioCurrentTime)}</span>
+                <span>{formatPlaybackTime(audioDuration)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (hearts <= 0) {
     return (
       <div className="fixed inset-0 z-[2100] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="bg-error-container border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-2xl w-full max-w-sm p-6 text-center animate-[popIn_0.28s_ease-out]">
           <div className="text-5xl mb-3">💔</div>
           <h3 className="text-xl font-headline-md font-bold text-on-error-container mb-2">
-            {lang === 'id' ? 'Nyawa Habis' : 'Out of Hearts'}
+            'Out of Hearts'
           </h3>
           <p className="text-sm text-on-error-container mb-4">{t.puzzleFailed}</p>
           <button
@@ -951,10 +979,10 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
 
   if (isComplete) {
     return (
-      <div className={cn("fixed inset-0 z-[2000] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-4", isClosing && "animate-[modalFadeOut_0.22s_ease-in_forwards]")}>
+      <div className={cn("fixed inset-0 z-[2000] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-3", isClosing && "animate-[modalFadeOut_0.22s_ease-in_forwards]")}>
         <div
           className={cn(
-            "border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-xl w-full max-w-sm max-h-[88vh] flex flex-col relative transform transition-transform animate-[popIn_0.3s_ease-out] overflow-hidden",
+            "border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-xl w-full max-w-sm max-h-[84vh] flex flex-col relative transform transition-transform animate-[popIn_0.3s_ease-out] overflow-hidden",
             waypoint.isFar ? "text-on-primary-container" : "text-on-surface",
             waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]",
             isClosing && "animate-[modalCardOut_0.22s_ease-in_forwards]"
@@ -963,20 +991,20 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
             boxShadow: '8px 8px 0px 0px #181d17, 0 0 0 2px rgba(255, 214, 102, 0.8), 0 0 30px 8px rgba(255, 193, 7, 0.6)'
           }}
         >
-          <div className={cn("shrink-0 px-6 pt-6 pb-3 flex flex-col items-center gap-3", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
+          <div className={cn("shrink-0 px-4 pt-4 pb-2 flex flex-col items-center gap-2", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
             {waypoint.isFar ? (
-              <div className="mt-4 bg-surface text-on-surface border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-full px-4 py-2 flex items-center gap-2 rotate-[-2deg]">
+              <div className="mt-2 bg-surface text-on-surface border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-full px-3 py-1.5 flex items-center gap-1.5 rotate-[-2deg]">
                 <span className="material-symbols-outlined text-[#ff5722]" style={{ fontVariationSettings: "'FILL' 1" }}>map</span>
-                <span className="font-label-bold uppercase tracking-wider">{t.farMode}</span>
+                <span className="font-label-bold uppercase tracking-wider text-[10px]">{t.farMode}</span>
               </div>
             ) : (
-              <div className="mt-4 flex flex-col items-center gap-2">
-                <div className="bg-surface text-on-surface border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-full px-4 py-2 flex items-center gap-2 rotate-[-2deg]">
+              <div className="mt-2 flex flex-col items-center gap-1.5">
+                <div className="bg-surface text-on-surface border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-full px-3 py-1.5 flex items-center gap-1.5 rotate-[-2deg]">
                   <span className="material-symbols-outlined text-[#ff5722]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-                  <span className="font-label-bold uppercase tracking-wider">{t.nearMode}</span>
+                  <span className="font-label-bold uppercase tracking-wider text-[10px]">{t.nearMode}</span>
                 </div>
                 {waypoint.isContextual && (
-                  <div className="bg-brand-neon text-on-surface border-4 border-on-surface shadow-[2px_2px_0px_0px_#181d17] rounded-full px-3 py-1 flex items-center gap-1">
+                  <div className="bg-brand-neon text-on-surface border-4 border-on-surface shadow-[2px_2px_0px_0px_#181d17] rounded-full px-2.5 py-1 flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">nature_people</span>
                     <span className="font-label-bold uppercase tracking-wider text-[10px]">Context: {waypoint.theme}</span>
                   </div>
@@ -984,13 +1012,13 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
               </div>
             )}
             <div className="text-center w-full">
-              <h2 className="font-headline-lg text-3xl font-bold mb-1">Masha'Allah!</h2>
-              <p className={cn("font-body-md", waypoint.isFar ? "opacity-90" : "text-on-surface")}>Quest Objective Complete.</p>
+              <h2 className="font-headline-lg text-2xl font-bold mb-0.5">Masha'Allah!</h2>
+              <p className={cn("font-body-md text-sm", waypoint.isFar ? "opacity-90" : "text-on-surface")}>Quest Objective Complete.</p>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-3">
-	          <div className="w-full bg-white border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-xl p-4 flex flex-col gap-4">
+          <div className="flex-1 overflow-y-auto px-4 pb-2">
+	          <div className="w-full bg-white border-4 border-on-surface shadow-[4px_4px_0px_0px_#181d17] rounded-xl p-3 flex flex-col gap-2.5">
             <div className="flex items-center justify-between border-b-2 border-on-surface pb-2">
               <div className="flex items-center gap-2 text-on-surface font-bold">
                 <span className="material-symbols-outlined">graphic_eq</span>
@@ -1001,10 +1029,10 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                   return (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-label-bold bg-surface px-2 py-0.5 rounded-md border-2 border-on-surface">
-                        {lang === 'id' ? `Surat ${surahName}` : `Surah ${surahName}`}
+                        {`Surah ${surahName}`}
                       </span>
                       <span className="font-label-bold bg-brand-neon px-2 py-0.5 rounded-md border-2 border-on-surface">
-                        {lang === 'id' ? `Ayat ${ayahNo || '?'}` : `Ayah ${ayahNo || '?'}`}
+                        {`Ayah ${ayahNo || '?'}`}
                       </span>
                     </div>
                   );
@@ -1015,8 +1043,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
 	            {getCleanArabicText() ? (
               <div 
                 className={cn(
-                  "font-arabic-display text-3xl text-on-surface text-center py-2 overflow-y-auto",
-                  showFullAyah ? "max-h-[42vh] leading-[2.3]" : "max-h-36 leading-[2.2]"
+                  "font-arabic-display text-2xl text-on-surface text-center py-1.5 overflow-y-auto",
+                  showFullAyah ? "max-h-[36vh] leading-[2.15]" : "max-h-28 leading-[2.05]"
                 )}
                 dir="rtl"
               >
@@ -1033,14 +1061,14 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                 <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
               </div>
 	            )}
-	            <div className="bg-surface p-3 rounded-lg border-2 border-on-surface">
+	            <div className="bg-surface p-2.5 rounded-lg border-2 border-on-surface">
 	              {insightLoading ? (
-	                <p className="font-body-lg text-sm text-on-surface italic text-center">
-	                  {lang === 'id' ? 'Memuat...' : 'Loading...'}
+	                <p className="font-body-lg text-xs text-on-surface italic text-center">
+	                  'Loading...'
 	                </p>
 	              ) : (
-	                <p className="font-body-lg text-sm text-on-surface italic text-center">
-	                  "{insightData?.translation || waypoint.translation || (lang === 'id' ? 'Terjemahan tidak tersedia.' : 'Translation unavailable.')}"
+	                <p className="font-body-lg text-xs text-on-surface italic text-center">
+	                  "{insightData?.translation || waypoint.translation || 'Translation unavailable.'}"
 	                </p>
 	              )}
 	            </div>
@@ -1050,19 +1078,16 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                   className="self-center text-[10px] font-label-bold uppercase tracking-widest px-3 py-1.5 rounded-full border-2 border-on-surface bg-brand-neon text-on-surface"
                 >
                   {showFullAyah
-                    ? (lang === 'id' ? 'Ringkas Ayat' : 'Show Less')
-                    : (lang === 'id' ? 'Lihat Selengkapnya' : 'Show Full Ayah')}
+                    ? 'Show Less'
+                    : 'Show Full Ayah'}
                 </button>
               )}
-	            <div className="flex justify-center gap-4 mt-1">
-              <button disabled className="w-10 h-10 rounded-full border-4 border-on-surface bg-surface text-on-surface shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center opacity-50">
-                <span className="material-symbols-outlined text-sm">replay_10</span>
-              </button>
+	            <div className="flex justify-center gap-3 mt-0.5">
               <button 
                 onClick={toggleAudio}
                 disabled={!audioRef.current}
                 className={cn(
-                  "w-12 h-12 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all",
+                  "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all",
                   !audioRef.current && "opacity-50"
                 )}
               >
@@ -1070,11 +1095,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                   {isPlaying ? 'pause' : 'play_arrow'}
                 </span>
               </button>
-              <button disabled className="w-10 h-10 rounded-full border-4 border-on-surface bg-surface text-on-surface shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center opacity-50">
-                <span className="material-symbols-outlined text-sm">forward_10</span>
-              </button>
 	            </div>
-	            <div className="mt-2">
+	            <div className="mt-1">
                 <div className="h-2 w-full bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all duration-200"
@@ -1089,12 +1111,12 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
 	          </div>
           </div>
 
-          <div className={cn("shrink-0 px-6 pt-3 pb-6 border-t-2 border-on-surface/20", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
+          <div className={cn("shrink-0 px-4 pt-2 pb-4 border-t-2 border-on-surface/20", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
 	          <button 
 	            onClick={handleClaimAndClose}
                 disabled={!playbackCompleted}
 	            className={cn(
-                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-4 px-4 font-headline-md font-bold uppercase tracking-wide transition-all mt-2 flex items-center justify-center gap-2 group relative overflow-hidden",
+                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-3 px-3 font-headline-md font-bold uppercase tracking-wide transition-all mt-1.5 flex items-center justify-center gap-2 group relative overflow-hidden",
                   playbackCompleted ? "hover:translate-x-1 hover:translate-y-1 cursor-pointer reward-glow-sweep" : "opacity-55 cursor-not-allowed"
                 )}
 	            style={{
@@ -1107,7 +1129,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
 	          </button>
               {!playbackCompleted && (
                 <p className="text-[10px] font-label-bold text-on-surface text-center -mt-3">
-                  {lang === 'id' ? 'Tunggu audio selesai untuk klaim reward.' : 'Wait until audio finishes to claim reward.'}
+                  'Wait until audio finishes to claim reward.'
                 </p>
               )}
           </div>
@@ -1151,12 +1173,12 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   // Enigma Panel
   return (
     <div className={cn("fixed inset-0 z-[2000] pointer-events-auto overflow-hidden bg-brand-secondary", isClosing && "animate-[modalFadeOut_0.22s_ease-in_forwards]")}>
-      <div className="absolute top-4 left-4 z-20 bg-surface px-3 py-2 rounded-lg border-2 border-on-surface hard-shadow">
+      <div className="absolute top-3 left-3 z-20 bg-surface px-2.5 py-1.5 rounded-lg border-2 border-on-surface hard-shadow">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-label-bold uppercase tracking-wider">{t.heartsLabel}</span>
+            <span className="text-[9px] font-label-bold uppercase tracking-wider">{t.heartsLabel}</span>
             <div className="flex items-center gap-1.5">
             {Array.from({ length: maxHearts }, (_, idx) => (
-              <span key={idx} className={cn("text-lg", hearts > idx ? "opacity-100" : "opacity-30 grayscale")}>❤️</span>
+              <span key={idx} className={cn("text-base", hearts > idx ? "opacity-100" : "opacity-30 grayscale")}>❤️</span>
             ))}
             </div>
           </div>
@@ -1165,48 +1187,48 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
         onClick={requestClose}
         disabled={closeLocked}
         className={cn("absolute top-4 right-4 z-20 w-11 h-11 rounded-full border-2 border-on-surface bg-surface text-on-surface hard-shadow flex items-center justify-center", closeLocked && "opacity-40 cursor-not-allowed")}
-        aria-label={lang === 'id' ? 'Tutup tanpa ambil waypoint' : 'Close without taking waypoint'}
+        aria-label='Close without taking waypoint'
       >
         <span className="material-symbols-outlined">close</span>
       </button>
       
-      <div className="relative z-10 h-full overflow-y-auto px-4 pt-20 pb-8" style={{ scrollbarWidth: 'none' }}>
-        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
+      <div className="relative z-10 h-full px-3 pt-16 pb-4" style={{ scrollbarWidth: 'none' }}>
+        <div className="w-full max-w-3xl mx-auto h-full flex flex-col gap-2 min-h-0">
           {/* Header Section */}
-          <div className="sticky top-0 z-20 pt-2 pb-2 bg-brand-secondary flex flex-col items-center gap-3">
+          <div className="shrink-0 pt-1 pb-1 bg-brand-secondary flex flex-col items-center gap-1.5">
             {/* Ribbon Banner */}
-            <div className="bg-on-surface text-on-primary px-3 py-2 neubrutalist-border hard-shadow rounded-lg -mt-2 transform -rotate-1 relative z-20 w-[92%] mx-auto shrink-0">
+            <div className="bg-on-surface text-on-primary px-2.5 py-1.5 neubrutalist-border hard-shadow rounded-lg -mt-1 transform -rotate-1 relative z-20 w-[94%] mx-auto shrink-0">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="font-headline-md text-[11px] sm:text-sm md:text-lg text-brand-neon tracking-wide uppercase text-center flex-1">
+                <h2 className="font-headline-md text-[10px] sm:text-xs md:text-sm text-brand-neon tracking-wide uppercase text-center flex-1">
                   {(() => {
                     const [surahNoStr, ayahNo] = (waypoint.ayahKey || '').split(':');
                     const surahNo = Number(surahNoStr);
                     const surahName = SURAH_NAMES[surahNo] || surahNoStr || '?';
-                    return lang === 'id'
+                    return false
                       ? `SURAT ${surahName} AYAT ${ayahNo || '?'}`
                       : `SURAH ${surahName} AYAH ${ayahNo || '?'}`;
                   })()}
                 </h2>
-                <span className="text-[9px] font-label-bold uppercase tracking-wide bg-surface text-on-surface border-2 border-on-surface rounded-full px-2 py-1 shrink-0">
+                <span className="text-[8px] font-label-bold uppercase tracking-wide bg-surface text-on-surface border-2 border-on-surface rounded-full px-2 py-0.5 shrink-0">
                   {getLabelForMode(gameMode)}
                 </span>
                 <button
                   onClick={() => setShowTranslationPeek((prev) => !prev)}
-                  className="w-8 h-8 rounded-full border-2 border-on-surface bg-brand-neon text-on-surface flex items-center justify-center shrink-0"
-                  aria-label={lang === 'id' ? 'Lihat terjemahan' : 'View translation'}
+                  className="w-7 h-7 rounded-full border-2 border-on-surface bg-brand-neon text-on-surface flex items-center justify-center shrink-0"
+                  aria-label='View translation'
                 >
                   <span className="material-symbols-outlined text-sm">translate</span>
                 </button>
               </div>
             </div>
             {showTranslationPeek && (
-              <div className="bg-surface p-3 sm:p-4 neubrutalist-border hard-shadow w-full text-center rounded-xl bg-white mt-1 relative">
+              <div className="bg-surface p-2.5 sm:p-3 neubrutalist-border hard-shadow w-full text-center rounded-xl bg-white mt-1 relative">
                 {insightLoading ? (
-                  <p className="font-body-lg text-sm text-on-surface italic">
-                    {lang === 'id' ? 'Memuat...' : 'Loading...'}
+                  <p className="font-body-lg text-xs text-on-surface italic">
+                    'Loading...'
                   </p>
                 ) : (
-                  <p className={cn("font-body-lg text-sm sm:text-base text-on-surface italic", !showFullTranslation && "line-clamp-2")}>
+                  <p className={cn("font-body-lg text-xs sm:text-sm text-on-surface italic", !showFullTranslation && "line-clamp-2")}>
                     "{activeTranslation}"
                   </p>
                 )}
@@ -1216,20 +1238,22 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                     className="mt-2 text-[10px] font-label-bold uppercase tracking-widest px-3 py-1 rounded-full border-2 border-on-surface bg-brand-neon text-on-surface"
                   >
                     {showFullTranslation
-                      ? (lang === 'id' ? 'Ringkas' : 'Show Less')
-                      : (lang === 'id' ? 'Lihat Lengkap' : 'Show Full')}
+                      ? 'Show Less'
+                      : 'Show Full'}
                   </button>
                 )}
               </div>
             )}
           </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
+          <div className="min-h-full flex flex-col justify-center gap-3 py-2">
           {gameMode === 'arrange' ? (
             <>
               {/* Assembly Line (Drop Zones) */}
-              <div className="bg-white p-3 rounded-xl neubrutalist-border w-full">
+              <div className={cn("bg-gradient-to-b p-3 rounded-xl neubrutalist-border w-full shrink-0 hard-shadow", modePanelTone(gameMode))}>
                 <div
-                  className="flex flex-wrap gap-1.5 sm:gap-2 justify-end content-start items-start min-h-[64px] sm:min-h-[80px]"
+                  className="flex flex-wrap gap-2 justify-start content-start items-start min-h-[72px] sm:min-h-[88px]"
                   dir="rtl"
                   style={{ direction: 'rtl' }}
                 >
@@ -1242,11 +1266,11 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       <div 
                         key={`drop-${i}`}
                         onClick={() => removeWord(i)}
-                        className="h-12 sm:h-16 px-2 sm:px-4 bg-brand-primary text-on-primary neubrutalist-border hard-shadow rounded-lg flex items-center justify-center transform transition-transform cursor-pointer relative"
+                        className="h-11 sm:h-12 px-2.5 sm:px-3.5 bg-brand-primary text-on-primary neubrutalist-border hard-shadow rounded-lg flex items-center justify-center transform transition-transform cursor-pointer relative"
                       >
-                        <span className="font-arabic-display text-2xl sm:text-3xl leading-none mt-1 sm:mt-2 pb-1 sm:pb-2">{filledWordText}</span>
+                        <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1 pb-1">{filledWordText}</span>
                         {i === selectedWords.length - 1 && (
-                          <div className="absolute -top-2 -right-2 bg-error text-on-error rounded-full w-6 h-6 flex items-center justify-center neubrutalist-border text-xs z-10">
+                          <div className="absolute -top-1.5 -right-1.5 bg-error text-on-error rounded-full w-5 h-5 flex items-center justify-center neubrutalist-border text-xs z-10">
                             <span className="material-symbols-outlined text-[14px]">close</span>
                           </div>
                         )}
@@ -1255,7 +1279,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       <div 
                         key={`drop-empty-${i}`} 
                         className={cn(
-                          "w-14 sm:w-20 h-12 sm:h-16 border-2 border-dashed border-on-surface rounded-lg bg-surface-variant/30 flex items-center justify-center opacity-70",
+                          "w-12 sm:w-16 h-11 sm:h-12 border-2 border-dashed border-on-surface rounded-lg bg-surface-variant/30 flex items-center justify-center opacity-70",
                           isError && i === selectedWords.length && "border-error bg-error-container"
                         )}
                       >
@@ -1267,16 +1291,16 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
               </div>
             </>
           ) : (
-            <div className="bg-white p-3 rounded-xl neubrutalist-border w-full space-y-3">
+            <div className={cn("bg-gradient-to-b p-3 rounded-xl neubrutalist-border w-full space-y-3 hard-shadow", modePanelTone(gameMode))}>
               {gameMode === 'continue' && (
                 <div className="text-right" dir="rtl">
-                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2">
-                    {lang === 'id' ? 'Pilih kata lanjutan yang benar' : 'Choose the correct next word'}
+                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2.5 bg-surface border-2 border-on-surface rounded-full px-2.5 py-1 inline-flex">
+                    'Choose the correct next word'
                   </p>
-                  <div className="font-arabic-display text-2xl leading-[2.2] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2 justify-end flex-row-reverse">
+                  <div className="font-arabic-display text-xl leading-[2.05] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2">
                     {continuePromptWords.map((token, idx) =>
                       token === '__GAP__' ? (
-                        <span key={`gap-${idx}`} className="inline-flex items-center justify-center min-w-14 h-10 px-2 rounded-lg border-2 border-error bg-error-container text-error font-label-bold text-xs tracking-widest">
+                        <span key={`gap-${idx}`} className="inline-flex items-center justify-center min-w-12 h-8 px-2 rounded-lg border-2 border-error bg-error-container text-error font-label-bold text-[10px] tracking-widest">
                           ?
                         </span>
                       ) : (
@@ -1288,34 +1312,34 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
               )}
               {gameMode === 'meaning' && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2">
-                    {lang === 'id' ? 'Tebak arti ayat berikut' : 'Guess the meaning of this verse'}
+                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2.5 bg-surface border-2 border-on-surface rounded-full px-2.5 py-1 inline-flex">
+                    'Guess the meaning of this verse'
                   </p>
-                  <p className="font-arabic-display text-2xl text-right leading-[2.2] bg-surface rounded-lg p-3 border-2 border-on-surface/20" dir="rtl">
+                  <p className="font-arabic-display text-xl text-right leading-[2.05] bg-surface rounded-lg p-3 border-2 border-on-surface/20" dir="rtl">
                     {cleanArabicText}
                   </p>
                 </div>
               )}
               {gameMode === 'audio' && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2">
-                    {lang === 'id' ? 'Dengarkan potongan audio, tebak surah' : 'Listen to the audio snippet and guess the surah'}
+                  <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2.5 bg-surface border-2 border-on-surface rounded-full px-2.5 py-1 inline-flex">
+                    'Listen to the audio snippet and guess the surah'
                   </p>
                   <button
                     onClick={playAudioSnippet}
-                    className="w-full bg-primary text-on-primary border-2 border-on-surface rounded-lg py-2 font-label-bold uppercase text-xs hard-shadow flex items-center justify-center gap-2"
+                    className="w-full bg-primary text-on-primary border-2 border-on-surface rounded-lg py-2 font-label-bold uppercase text-[11px] hard-shadow flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined text-base">{audioQuizPlaying ? 'volume_up' : 'play_arrow'}</span>
-                    {lang === 'id'
-                      ? `Putar Ulang Potongan ${audioSnippetStage} (${audioSnippetStage === 1 ? '8s' : '12s'})`
+                    {false
+                      ? `Putar Ulang Snippet ${audioSnippetStage} (${audioSnippetStage === 1 ? '8s' : '12s'})`
                       : `Replay Snippet ${audioSnippetStage} (${audioSnippetStage === 1 ? '8s' : '12s'})`}
                   </button>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2.5 mt-2">
                     <button onClick={() => playAudioSnippet(1)} className="bg-surface border-2 border-on-surface rounded-lg py-2 text-[10px] font-label-bold uppercase">
-                      {lang === 'id' ? 'Potongan 1' : 'Snippet 1'}
+                      'Snippet 1'
                     </button>
                     <button onClick={() => playAudioSnippet(2)} className="bg-surface border-2 border-on-surface rounded-lg py-2 text-[10px] font-label-bold uppercase">
-                      {lang === 'id' ? 'Potongan 2' : 'Snippet 2'}
+                      'Snippet 2'
                     </button>
                   </div>
                 </div>
@@ -1323,7 +1347,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
               <div className="grid grid-cols-1 gap-2">
                 {quizOptions.length === 0 && (
                   <div className="p-3 rounded-lg border-2 border-on-surface/30 bg-surface text-xs font-label-bold uppercase tracking-wider text-on-surface text-center">
-                    {lang === 'id' ? 'Menyiapkan pilihan...' : 'Preparing choices...'}
+                    'Preparing choices...'
                   </div>
                 )}
                 {quizOptions.map((choice, idx) => {
@@ -1335,11 +1359,13 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       onClick={() => handleQuizChoice(choice)}
                       disabled={!!quizSelected || hearts <= 0}
                       className={cn(
-                        "text-left p-3 rounded-lg border-2 font-body-md text-sm transition-all",
+                        "p-3 rounded-lg border-2 transition-all hard-shadow min-h-11",
+                        gameMode === 'continue' ? "text-right font-arabic-display text-base" : "text-left font-body-md text-xs sm:text-sm",
                         isPicked && isAnswer && "bg-[#d8ffe0] border-[#0b6b1d]",
                         isPicked && !isAnswer && "bg-error-container border-error animate-[shake_0.28s_ease-in-out_2]",
-                        !isPicked && "bg-surface border-on-surface/40 hover:bg-surface-variant"
+                        !isPicked && "bg-surface border-on-surface/40 hover:bg-surface-variant hover:-translate-y-0.5"
                       )}
+                      dir={gameMode === 'continue' ? 'rtl' : 'ltr'}
                     >
                       {choice}
                     </button>
@@ -1364,8 +1390,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
           )}
 
           {gameMode === 'arrange' && (
-            <div className="w-full max-h-[42vh] sm:max-h-[36vh] overflow-y-auto pr-1 pb-1">
-              <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 sm:gap-3 w-full pb-2 rtl" dir="rtl">
+            <div className="w-full flex-1 min-h-[140px] overflow-y-auto pr-1 pb-1">
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-2.5 w-full pb-1.5 rtl" dir="rtl">
                 {shuffledBank.map((item) => {
                   const isUsed = selectedWords.includes(item.id);
                   
@@ -1374,9 +1400,9 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       <button 
                         key={`bank-used-${item.id}`}
                         disabled
-                        className="h-16 sm:h-20 bg-surface-variant text-on-surface/30 neubrutalist-border rounded-xl flex items-center justify-center cursor-not-allowed border-dashed opacity-50 relative overflow-hidden"
+                        className="h-14 sm:h-16 bg-surface-variant text-on-surface/30 neubrutalist-border rounded-xl flex items-center justify-center cursor-not-allowed border-dashed opacity-50 relative overflow-hidden"
                       >
-                        <span className="font-arabic-display text-2xl sm:text-4xl leading-none mt-1 sm:mt-2 pb-1 sm:pb-2">{item.word}</span>
+                        <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1 pb-1">{item.word}</span>
                         <div className="absolute inset-0 bg-on-surface/5 flex items-center justify-center backdrop-blur-[1px]">
                           <span className="material-symbols-outlined text-on-surface/50">check</span>
                         </div>
@@ -1389,9 +1415,9 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       key={`bank-${item.id}`}
                       onClick={() => handleWordClick(item.id)}
                       disabled={hearts <= 0}
-                      className="h-20 sm:h-24 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary active:scale-95 px-1.5 sm:px-2"
+                      className="h-16 sm:h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary hover:-translate-y-0.5 active:scale-95 px-1.5 sm:px-2"
                     >
-                      <span className="font-arabic-display text-2xl sm:text-3xl leading-none mt-1 sm:mt-2">{item.word}</span>
+                      <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1">{item.word}</span>
                       <span className="text-[9px] sm:text-[10px] font-label-bold text-on-surface uppercase mt-1 text-center line-clamp-1">
                         {item.translation || '...'}
                       </span>
@@ -1401,14 +1427,16 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
               </div>
             </div>
           )}
+          </div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-const BottomNav = ({ active, onChange, lang }: { active: string, onChange: (val: string) => void, lang: AppLang }) => {
-  const t = UI_TEXT[lang];
+const BottomNav = ({ active, onChange }: { active: string, onChange: (val: string) => void,   }) => {
+  const t = UI_TEXT;
   const tabs = [
     { id: 'radar', iconName: 'map', label: t.map },
     { id: 'collection', iconName: 'menu_book', label: t.scrolls },
@@ -1483,23 +1511,11 @@ export default function App() {
   const NEAR_RESPAWN_MS = 60 * 1000;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [appLang, setAppLang] = useState<AppLang>(() => (localStorage.getItem(APP_LANG_KEY) as AppLang) || 'id');
   const [audioReciterId, setAudioReciterId] = useState<string>(() => localStorage.getItem(QURAN_AUDIO_RECITER_KEY) || '7');
   const [profileStyle, setProfileStyle] = useState<string>(() => localStorage.getItem(PROFILE_STYLE_KEY) || 'ikhwan');
-  const t = UI_TEXT[appLang];
+  const t = UI_TEXT;
 
-  // ... (inside the component, before the return)
-  
-  const handleGuestLogin = () => {
-    playSound('open');
-    setUser({
-      uid: 'guest-user',
-      displayName: 'Guest Explorer',
-      email: 'guest@ayahquest.com'
-    });
-  };
-
-  const handleQuranLogin = () => {
+  const onQuranLogin = () => {
     playSound('open');
     const cachedQuranAuthRaw = localStorage.getItem(QURAN_AUTH_STORAGE_KEY);
     if (cachedQuranAuthRaw) {
@@ -1517,12 +1533,22 @@ export default function App() {
     // Redirect to real backend OAuth initiator
     window.location.href = '/api/auth/quran';
   };
+
+  const onGuestLogin = () => {
+    playSound('open');
+    setUser({
+      uid: 'guest-user',
+      displayName: 'Guest Explorer',
+      email: 'guest@ayahquest.com'
+    });
+  };
   const [coords, setCoords] = useState<[number, number]>([-6.2088, 106.8456]); 
   const [locationStatus, setLocationStatus] = useState<'waiting' | 'found' | 'error'>('waiting');
   const [manualLocationQuery, setManualLocationQuery] = useState('');
   const [manualLocationLoading, setManualLocationLoading] = useState(false);
   const [manualLocationResults, setManualLocationResults] = useState<{ name: string; lat: number; lng: number }[]>([]);
   const [xp, setXp] = useState(0);
+  const [essence, setEssence] = useState(0);
   const [streak, setStreak] = useState(0);
   const [rank, setRank] = useState('Seeker of Light');
   const [activeTab, setActiveTab] = useState('radar');
@@ -1535,11 +1561,12 @@ export default function App() {
   const [notes, setNotes] = useState<QuranNote[]>([]);
   const [collectionsData, setCollectionsData] = useState<QuranCollection[]>([]);
   const [goalTitle, setGoalTitle] = useState('');
-  const [goalTarget, setGoalTarget] = useState(7);
+  const [goalGoal, setGoalGoal] = useState(7);
   const [noteText, setNoteText] = useState('');
   const [noteVerseKey, setNoteVerseKey] = useState('');
   const [collectionName, setCollectionName] = useState('');
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const [journeyView, setJourneyView] = useState<JourneyView>('progress');
   const [syncQueue, setSyncQueue] = useState<SyncQueueItem[]>(() => {
     try {
       const raw = localStorage.getItem(QURAN_SYNC_QUEUE_KEY);
@@ -1553,18 +1580,19 @@ export default function App() {
   const [selectedWaypoint, setSelectedWaypoint] = useState<(Waypoint & { isFar?: boolean, distance?: number }) | null>(null);
   const [discoveryRange] = useState(25); // 25 meters proximity
   const [nearRange] = useState(30);
+  const [greenStartRange] = useState(50);
   const [lockRange] = useState(600);
   const [lockMaxRange] = useState(3000);
   const [showLocationInfo, setShowLocationInfo] = useState(false);
   const [lockNotice, setLockNotice] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState(Date.now());
   const [xpGain, setXpGain] = useState<number | null>(null);
+  const [essenceGain, setEssenceGain] = useState<number | null>(null);
 
   const [path, setPath] = useState(window.location.pathname);
   const isTopUpRunningRef = useRef(false);
   useEffect(() => {
-    localStorage.setItem(APP_LANG_KEY, appLang);
-  }, [appLang]);
+  }, );
   useEffect(() => {
     localStorage.setItem(QURAN_AUDIO_RECITER_KEY, audioReciterId);
   }, [audioReciterId]);
@@ -1783,6 +1811,7 @@ export default function App() {
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           setXp(profileSnap.data().xp || 0);
+          setEssence(profileSnap.data().essence || 0);
           setStreak(profileSnap.data().streak || 0);
           setRank(profileSnap.data().rank || 'Seeker of Light');
           setCollectedIds(new Set(profileSnap.data().collectedIds || []));
@@ -1791,6 +1820,7 @@ export default function App() {
         } else {
           await setDoc(profileRef, {
             xp: 0, streak: 0, rank: 'Seeker of Light',
+            essence: 0,
             userId: quranUser.uid, name: quranUser.displayName, email: quranUser.email || null, avatar: quranUser.photoURL || null, collectedIds: [], collectedAtMap: {}, collectedCooldownMap: {}
           });
         }
@@ -1826,6 +1856,7 @@ export default function App() {
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           setXp(profileSnap.data().xp || 0);
+          setEssence(profileSnap.data().essence || 0);
           setStreak(profileSnap.data().streak || 0);
           setRank(profileSnap.data().rank || 'Seeker of Light');
           setCollectedIds(new Set(profileSnap.data().collectedIds || []));
@@ -1834,6 +1865,7 @@ export default function App() {
         } else {
           await setDoc(profileRef, {
             xp: 0,
+            essence: 0,
             streak: 0,
             rank: 'Seeker of Light',
             userId: u.uid,
@@ -1863,7 +1895,7 @@ export default function App() {
 
   const createGoal = async () => {
     if (!user?.isQuranAuth || !user?.accessToken) return;
-    const payload = { title: goalTitle || 'Daily Ayah Goal', target: Number(goalTarget) || 7 };
+    const payload = { title: goalTitle || 'Daily Ayah Goal', target: Number(goalGoal) || 7 };
     try {
       const res = await fetch('/api/quran/goals', {
         method: 'POST',
@@ -1941,18 +1973,19 @@ export default function App() {
         wps.push({ id: doc.id, ...doc.data() } as Waypoint);
       });
       
-      if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Teks bahasa Arab tidak tersedia")) {
+      if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Arabic text unavailable")) {
         // Generate random points with varying distances
-        const newWaypoints: Waypoint[] = [];
-        for (let i = 0; i < 60; i++) {
+        const waypointPromises = Array.from({ length: 60 }, async (_, i) => {
           // Angle in radians
           const angle = Math.random() * Math.PI * 2;
-          // Distance in meters:
-          // near: 5-30m (gold, 20%), active: 30m-600m (green, 50%), locked: 600m-3km (gray, 30%)
+          
+          // distance logic:
+          // near: 5-30m (gold, 20% = first 12), quiet gap: 30-50m, active: 50m-600m (green, 55% = next 33), locked: 600m-3km (gray, 25% = last 15)
           const distanceMeters =
-            i < 18 ? (5 + Math.random() * 45) :
-            i < 45 ? (30 + Math.random() * 570) :
+            i < 12 ? (5 + Math.random() * 25) : 
+            i < 45 ? (50 + Math.random() * 550) :
             (600 + Math.random() * 2400);
+
           // Approximate meters to degrees
           const rLat = distanceMeters / 111320;
           const rLng = distanceMeters / (111320 * Math.cos(coords[0] * Math.PI / 180));
@@ -1961,16 +1994,15 @@ export default function App() {
           const lng = coords[1] + (rLng * Math.cos(angle));
 
           try {
-            const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}`);
+            const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
             if (!verseRes.ok) throw new Error('API Error');
             const verseData = await verseRes.json();
             const ayah = verseData.verse || verseData;
             
-            // The SDK usually unwraps the "verse" envelope and camelCases properties
             const verseKey = ayah.verseKey || ayah.verse_key;
-            const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "Teks bahasa Arab tidak tersedia";
+            const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "Arabic text unavailable";
             const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
-            const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Terjemahan tidak tersedia";
+            const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";
             const audioUrl = ayah.audio?.url ? `https://verses.quran.com/${ayah.audio.url}` : undefined;
             const wordsData = ayah.words?.map((w: any) => ({
               text: w.textUthmani || w.text_uthmani,
@@ -1978,7 +2010,7 @@ export default function App() {
               id: w.id
             })) || [];
 
-            newWaypoints.push({
+            return {
               id: Math.random().toString(36).substring(7),
               lat,
               lng,
@@ -1991,20 +2023,22 @@ export default function App() {
               theme: ayah.metadata?.contextLabel || ayah.metadata?.theme,
               isContextual: ayah.metadata?.isContextual,
               wordsData: wordsData
-            } as any);
+            } as any;
           } catch(e) {
-             // Fallback in case API fails
-             newWaypoints.push({
+             // Fallback
+             return {
                id: Math.random().toString(36).substring(7),
                lat,
                lng,
                ayahKey: "2:255",
                arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
-               translation: "Allah! Tidak ada tuhan selain Dia. Yang Mahahidup, Yang terus-menerus mengurus (makhluk-Nya).",
+               translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
                points: 25
-             });
+             } as any;
           }
-        }
+        });
+
+        const newWaypoints = await Promise.all(waypointPromises);
         
         if (isSubscribed) {
           setWaypoints(newWaypoints);
@@ -2026,21 +2060,27 @@ export default function App() {
 
   const generateDynamicWaypoint = useCallback(async (baseCoords: [number, number]) => {
     const angle = Math.random() * Math.PI * 2;
-    const distanceMeters = 20 + Math.random() * 1600; // mostly near/medium for active walking loop
+    const typeRoll = Math.random();
+    // Balanced distribution: 25% near (gold), quiet gap 30-50m, 55% active (green), 20% far (gray)
+    const distanceMeters =
+      typeRoll < 0.25 ? (5 + Math.random() * 25) : 
+      typeRoll < 0.80 ? (50 + Math.random() * 550) :
+      (600 + Math.random() * 2400);
+
     const rLat = distanceMeters / 111320;
     const rLng = distanceMeters / (111320 * Math.cos(baseCoords[0] * Math.PI / 180));
     const lat = baseCoords[0] + (rLat * Math.sin(angle));
     const lng = baseCoords[1] + (rLng * Math.cos(angle));
 
     try {
-      const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}`);
+      const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
       if (!verseRes.ok) throw new Error('API Error');
       const verseData = await verseRes.json();
       const ayah = verseData.verse || verseData;
       const verseKey = ayah.verseKey || ayah.verse_key || `${Math.floor(Math.random() * 114) + 1}:1`;
       const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "تجربة";
       const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
-      const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Terjemahan tidak tersedia";
+      const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";
       const audioUrl = ayah.audio?.url ? `https://verses.quran.com/${ayah.audio.url}` : undefined;
       const wordsData = ayah.words?.map((w: any) => ({
         text: w.textUthmani || w.text_uthmani,
@@ -2068,7 +2108,7 @@ export default function App() {
         lng,
         ayahKey: `${Math.floor(Math.random() * 114) + 1}:${Math.floor(Math.random() * 7) + 1}`,
         arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ",
-        translation: "Allah, tidak ada Tuhan selain Dia.",
+        translation: "Allah, there is no deity except Him.",
         points: 20
       } as Waypoint;
     }
@@ -2104,11 +2144,11 @@ export default function App() {
     if (!user || locationStatus !== 'found') return;
     if (isTopUpRunningRef.current) return;
     const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
-      const minActiveTarget = 24;
-    if (activeCount >= minActiveTarget) return;
+      const minActiveGoal = 24;
+    if (activeCount >= minActiveGoal) return;
     isTopUpRunningRef.current = true;
     try {
-      const toCreate = Math.min(8, minActiveTarget - activeCount);
+      const toCreate = Math.min(8, minActiveGoal - activeCount);
       const created = await Promise.all(
         Array.from({ length: toCreate }, () => generateDynamicWaypoint(coords))
       );
@@ -2164,7 +2204,7 @@ export default function App() {
                 setCoords(DEFAULT_FALLBACK_COORDS);
                 setLocationStatus('found');
               },
-              { enableHighAccuracy: false, maximumAge: 60000, timeout: 15000 }
+              { enableHighAccuracy: false, maximumAge: 300000, timeout: 30000 }
             );
             return;
           }
@@ -2172,7 +2212,7 @@ export default function App() {
           setCoords(DEFAULT_FALLBACK_COORDS);
           setLocationStatus('found');
         },
-        { enableHighAccuracy: true, maximumAge: 15000, timeout: 12000 }
+        { enableHighAccuracy: true, maximumAge: 60000, timeout: 20000 }
       );
       return () => navigator.geolocation.clearWatch(watchId);
     } else {
@@ -2192,16 +2232,16 @@ export default function App() {
     const a = Math.sin(df/2) * Math.sin(df/2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl/2) * Math.sin(dl/2);
     const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     if (dist > lockMaxRange) {
-      setLockNotice(appLang === 'id'
-        ? 'Waypoint ini di luar jangkauan radar (maks 10 km).'
+      setLockNotice(false
+        ? 'This waypoint is outside radar range (max 10 km).'
         : 'This waypoint is outside radar range (max 10 km).');
       setTimeout(() => setLockNotice(null), 2200);
       playSound('error');
       return;
     }
     if (dist > lockRange) {
-      setLockNotice(appLang === 'id'
-        ? 'Terlalu jauh. Dekati area ini untuk membuka waypoint.'
+      setLockNotice(false
+        ? 'Too far. Move closer to unlock this waypoint.'
         : 'Too far. Move closer to unlock this waypoint.');
       setTimeout(() => setLockNotice(null), 2200);
       playSound('error');
@@ -2241,18 +2281,26 @@ export default function App() {
   };
   const onCollect = async () => {
     if (!selectedWaypoint || !user) return;
+    const isDuplicateCollect = collectedIds.has(selectedWaypoint.ayahKey);
     
     // Base points for reading the ayat
-    let awardedPoints = 15;
+    let awardedPoints = isDuplicateCollect ? 5 : 15;
+    let awardedEssence = isDuplicateCollect ? 2 : 0;
     
     // Bonus for actually walking to the location
     if (!selectedWaypoint.isFar) {
-       awardedPoints = 50; 
+       awardedPoints = isDuplicateCollect ? 8 : 50; 
     }
 
     const newXp = xp + awardedPoints;
+    const newEssence = essence + awardedEssence;
     setXp(newXp);
+    setEssence(newEssence);
     setXpGain(awardedPoints);
+    if (awardedEssence > 0) {
+      setEssenceGain(awardedEssence);
+      window.setTimeout(() => setEssenceGain(null), 1200);
+    }
     window.setTimeout(() => setXpGain(null), 1200);
     
     // Simple streak logic: increment for now to show the feature
@@ -2296,6 +2344,7 @@ export default function App() {
         const profileRef = doc(db, 'profiles', user.uid);
         await updateDoc(profileRef, { 
           xp: newXp, 
+          essence: newEssence,
           streak: newStreak,
           rank: newRank,
           name: user.displayName || 'Anonymous Seeker',
@@ -2347,6 +2396,40 @@ export default function App() {
     }
 
   };
+  const getSurahNoFromAyahKey = (ayahKey: string) => {
+    const [surahNoStr] = String(ayahKey || '').split(':');
+    const surahNo = Number(surahNoStr);
+    return Number.isFinite(surahNo) ? surahNo : 0;
+  };
+  const sortedCollectedAyahs = useMemo(
+    () => Array.from(collectedIds as Set<string>).sort((a: string, b: string) => {
+      const [sa, va] = String(a).split(':').map(Number);
+      const [sb, vb] = String(b).split(':').map(Number);
+      return sa - sb || va - vb;
+    }),
+    [collectedIds]
+  );
+  const surahProgress = useMemo(() => {
+    const counter: Record<number, number> = {};
+    for (const ayahKey of collectedIds) {
+      const surahNo = getSurahNoFromAyahKey(ayahKey);
+      if (!surahNo) continue;
+      counter[surahNo] = (counter[surahNo] || 0) + 1;
+    }
+    return Object.entries(counter)
+      .map(([surahNoRaw, unlocked]) => {
+        const surahNo = Number(surahNoRaw);
+        const total = SURAH_AYAH_COUNTS[surahNo] || unlocked;
+        const percent = Math.min(100, Math.round((unlocked / Math.max(1, total)) * 100));
+        return { surahNo, unlocked, total, percent, surahName: SURAH_NAMES[surahNo] || String(surahNo) };
+      })
+      .sort((a, b) => a.surahNo - b.surahNo);
+  }, [collectedIds]);
+  const myRankPosition = useMemo(() => {
+    if (!user) return null;
+    const idx = leaders.findIndex((l) => l.id === user.uid);
+    return idx >= 0 ? idx + 1 : null;
+  }, [leaders, user]);
 
   if (path === '/terms') {
     return (
@@ -2357,17 +2440,17 @@ export default function App() {
         <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
           <h1 className="text-3xl font-bold mb-6">{t.termsTitle}</h1>
           <p><strong>{t.effectiveDate}:</strong> May 20, 2026</p>
-          {appLang === 'id' ? (
+          {false ? (
             <>
-              <h2 className="text-xl font-bold mt-6 mb-2">1. Deskripsi Layanan</h2>
-              <p>Santree Go adalah platform edukasi untuk mendorong interaksi dengan Al-Qur'an melalui penemuan berbasis lokasi.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">2. Penggunaan Geolokasi</h2>
-              <p>Santree Go memerlukan akses GPS perangkat Anda agar berfungsi dengan benar. Data ini hanya digunakan untuk menampilkan ayat Al-Qur'an di sekitar Anda.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">3. Konten Qurani</h2>
-              <p>Seluruh teks, terjemahan, dan audio Al-Qur'an disediakan melalui Quran Foundation API.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">4. Akun Pengguna</h2>
-              <p>Jika Anda menggunakan fitur "Login with Quran.com", Anda menyetujui sinkronisasi bookmark dan streak.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">5. Kontak</h2>
+              <h2 className="text-xl font-bold mt-6 mb-2">1. Description of Service</h2>
+              <p>Santree Go is an educational platform designed to encourage Quranic engagement through location-based discovery.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">2. Use of Geolocation</h2>
+              <p>Santree Go requires access to your device&apos;s GPS location to function correctly. This data is used solely to surface Quranic verses in your vicinity.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">3. Quranic Content</h2>
+              <p>All Quranic text, translations, and audio are provided via the Quran Foundation API.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">4. User Accounts</h2>
+              <p>If you choose to use the "Login with Quran.com" feature, you agree to sync your bookmarks and streaks.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">5. Contact</h2>
             </>
           ) : (
             <>
@@ -2397,15 +2480,15 @@ export default function App() {
         <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
           <h1 className="text-3xl font-bold mb-6">{t.privacyTitle}</h1>
           <p><strong>{t.effectiveDate}:</strong> May 20, 2026</p>
-          {appLang === 'id' ? (
+          {false ? (
             <>
-              <h2 className="text-xl font-bold mt-6 mb-2">1. Informasi yang Kami Kumpulkan</h2>
-              <p>Santree Go menggunakan koordinat GPS Anda untuk menampilkan ayat di sekitar Anda. Kami juga menyimpan informasi profil dasar saat login.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">2. Cara Kami Menggunakan Data</h2>
-              <p>Untuk mempersonalisasi pengalaman eksplorasi Qurani dan menjaga streak Anda.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">3. Penyimpanan Data</h2>
-              <p>Kami menggunakan Firebase dan Quran Foundation API. Kami tidak menjual data pribadi Anda.</p>
-              <h2 className="text-xl font-bold mt-6 mb-2">4. Kontak</h2>
+              <h2 className="text-xl font-bold mt-6 mb-2">1. Information We Collect</h2>
+              <p>At Santree Go, we access your GPS coordinates to display nearby Quranic verses. We collect basic profile information when you log in.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">2. How We Use Data</h2>
+              <p>To personalize your Quranic discovery experience and maintain your streaks.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">3. Data Storage</h2>
+              <p>We use Firebase and Quran Foundation API. We do not sell your personal data.</p>
+              <h2 className="text-xl font-bold mt-6 mb-2">4. Contact Us</h2>
             </>
           ) : (
             <>
@@ -2425,21 +2508,69 @@ export default function App() {
   }
 
   if (authLoading) return <div className="h-screen w-screen bg-surface flex items-center justify-center text-on-surface font-headline-md font-bold uppercase animate-pulse">{t.guiding}</div>;
-  if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} onQuranLogin={handleQuranLogin} lang={appLang} />;
+  if (!user) return <LoginOverlay onGuestLogin={onGuestLogin} onQuranLogin={onQuranLogin} />;
 
   const handleSimulatedMove = (dLat: number, dLng: number) => {
     setCoords(prev => [prev[0] + dLat, prev[1] + dLng]);
     setLocationStatus('found');
+  };
+  const openReplayAyah = (ayahKey: string) => {
+    const wp = waypoints.find((w) => w.ayahKey === ayahKey);
+    if (wp) {
+      setSelectedWaypoint({ ...wp, isFar: false, distance: 0, replayOnly: true });
+      return;
+    }
+    setSelectedWaypoint({
+      id: `replay-${ayahKey}`,
+      lat: coords[0],
+      lng: coords[1],
+      ayahKey,
+      arabicText: '',
+      translation: '',
+      points: 0,
+      isFar: false,
+      distance: 0,
+      replayOnly: true,
+    } as any);
+  };
+  const resetSyncNow = async () => {
+    if (!user?.isQuranAuth || !user?.accessToken) return;
+    setSyncStatus('syncing');
+    try {
+      localStorage.removeItem(QURAN_SYNC_QUEUE_KEY);
+      setSyncQueue([]);
+      await Promise.all([
+        loadQuranUserData(user.accessToken),
+        fetch('/api/quran/bookmarks?mushafId=4', { headers: { Authorization: `Bearer ${user.accessToken}` } })
+          .then((r) => r.json())
+          .then((data) => {
+            const ayahKeys = Array.isArray(data?.data)
+              ? data.data
+                  .map((b: any) => `${b?.key}:${b?.verseNumber}`)
+                  .filter((k: any) => typeof k === 'string' && k.includes(':'))
+              : (data?.bookmarks || []).map((b: any) => String(b.verse_key || ''));
+            if (ayahKeys.length > 0) setQuranBookmarkIds(new Set(ayahKeys));
+          }),
+      ]);
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('failed');
+    }
   };
   const showSimMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   return (
     <div className="h-screen w-screen bg-surface overflow-hidden select-none touch-none flex justify-center">
       <div className="relative h-screen w-full max-w-md bg-pattern bg-surface overflow-hidden">
-      <XPHeader xp={xp} rank={rank} streak={streak} lang={appLang} />
+      <XPHeader xp={xp} rank={rank} streak={streak}   />
       {xpGain !== null && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[1600] bg-brand-neon text-on-surface border-2 border-on-surface rounded-full px-3 py-1 text-xs font-label-bold uppercase animate-[floatUp_1.1s_ease-out_forwards]">
           +{xpGain} XP
+        </div>
+      )}
+      {essenceGain !== null && (
+        <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[1600] bg-surface text-on-surface border-2 border-on-surface rounded-full px-3 py-1 text-xs font-label-bold uppercase animate-[floatUp_1.1s_ease-out_forwards]">
+          +{essenceGain} {t.essence}
         </div>
       )}
       
@@ -2541,6 +2672,7 @@ export default function App() {
             collectedIds={activeCollectedIds} 
             onWaypointClick={handleWaypointClick}
             nearRange={nearRange}
+            greenStartRange={greenStartRange}
             lockRange={lockRange}
             lockMaxRange={lockMaxRange}
           />
@@ -2552,25 +2684,25 @@ export default function App() {
           {waypoints.length === 0 && (
             <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[92%] max-w-md bg-surface neubrutalist-border hard-shadow rounded-2xl p-4 text-on-surface">
               <h3 className="font-headline-md font-bold text-sm uppercase tracking-wide">
-                {appLang === 'id' ? 'Menyiapkan waypoint...' : 'Preparing waypoints...'}
+                'Preparing waypoints...'
               </h3>
               <p className="text-[11px] mt-1">
-                {appLang === 'id' ? 'Mohon tunggu, sistem sedang menyiapkan ayat di sekitar Anda.' : 'Please wait, we are preparing nearby verses for you.'}
+                'Please wait, we are preparing nearby verses for you.'
               </p>
             </div>
           )}
           {waypoints.length > 0 && availableWaypointCount === 0 && (
             <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[92%] max-w-md bg-surface neubrutalist-border hard-shadow rounded-2xl p-4 text-on-surface">
               <h3 className="font-headline-md font-bold text-sm uppercase tracking-wide">
-                {appLang === 'id' ? 'Waypoint sekitar sudah selesai' : 'Nearby waypoints are completed'}
+                'Nearby waypoints are completed'
               </h3>
               <p className="text-[11px] mt-1">
-                {appLang === 'id'
-                  ? 'Jalan ke area lain (GPS) untuk menemukan waypoint baru, atau tunggu respawn.'
+                {false
+                  ? 'Walk to other areas (GPS) to find new waypoints, or wait for respawn.'
                   : 'Walk to another area (GPS) to discover more waypoints, or wait for respawn.'}
               </p>
               <div className="mt-3 text-[11px] font-label-bold uppercase tracking-wider bg-brand-neon text-on-surface rounded-lg border-2 border-on-surface px-3 py-2 inline-flex">
-                {appLang === 'id' ? `Respawn berikutnya: ${formatCountdown(nextRespawnMs)}` : `Next respawn: ${formatCountdown(nextRespawnMs)}`}
+                {false ? `Next respawn: ${formatCountdown(nextRespawnMs)}` : `Next respawn: ${formatCountdown(nextRespawnMs)}`}
               </div>
             </div>
           )}
@@ -2582,8 +2714,11 @@ export default function App() {
             <div className="mb-6 bg-surface-container-high neubrutalist-border hard-shadow rounded-2xl p-4">
               <h2 className="text-3xl font-headline-md font-bold text-on-surface uppercase tracking-wide">{t.leaderboardTitle}</h2>
               <p className="text-[11px] font-label-bold uppercase tracking-widest text-on-surface mt-1">
-                {appLang === 'id' ? 'Naik peringkat dengan XP tertinggi.' : 'Climb by earning the highest XP.'}
+                'Climb by earning the highest XP.'
               </p>
+              <div className="mt-2 inline-flex px-2 py-1 rounded-lg border-2 border-on-surface bg-brand-neon text-[10px] font-label-bold uppercase">
+                {t.yourRank}: {myRankPosition ? `#${myRankPosition}` : '-'}
+              </div>
             </div>
             <div className="space-y-3">
               {leaders.map((lead, i) => (
@@ -2628,38 +2763,57 @@ export default function App() {
                  <span className="material-symbols-outlined text-4xl text-tertiary">cloud_sync</span>
               </div>
             </div>
-            
-            <h3 className="text-sm font-label-bold uppercase tracking-widest mb-3 text-on-surface">Gameplay Collection</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Array.from(collectedIds).length === 0 && (
-                <div className="col-span-1 sm:col-span-2 text-center p-8 bg-surface-variant rounded-xl neubrutalist-border border-dashed text-on-surface">
-                  <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search</span>
-                  <p className="font-label-bold">{t.noAyah}</p>
-                  <button onClick={() => setActiveTab('radar')} className="mt-4 bg-primary text-on-primary font-label-bold px-6 py-2 rounded-full neubrutalist-border hard-shadow hover:-translate-y-1 transition-transform">{t.startExplore}</button>
-                </div>
-              )}
-              {Array.from(collectedIds).map((id: string, index) => (
-                <div key={id} className="bg-parchment p-5 rounded-xl flex flex-col items-center gap-3 neubrutalist-border hard-shadow hover:-translate-y-1 transition-transform cursor-pointer relative overflow-hidden group">
-                  <div className="absolute -top-3 -right-3 w-10 h-10 bg-error-container neubrutalist-border rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <span className="material-symbols-outlined text-error text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark</span>
+            <div className="bg-surface-container-high rounded-xl neubrutalist-border p-2 mb-4 grid grid-cols-2 gap-2">
+              <button onClick={() => setJourneyView('progress')} className={cn("px-3 py-2 rounded-lg text-xs font-label-bold uppercase border-2 border-on-surface", journeyView === 'progress' ? "bg-brand-neon" : "bg-surface")}>{t.journeyProgress}</button>
+              <button onClick={() => setJourneyView('replay')} className={cn("px-3 py-2 rounded-lg text-xs font-label-bold uppercase border-2 border-on-surface", journeyView === 'replay' ? "bg-brand-neon" : "bg-surface")}>{t.journeyReplay}</button>
+            </div>
+            <div className="mb-4 bg-surface-container-high rounded-xl neubrutalist-border p-3 flex items-center justify-between">
+              <span className="text-xs font-label-bold uppercase">{t.essence}</span>
+              <span className="text-lg font-headline-md font-bold">{essence}</span>
+            </div>
+            {journeyView === 'progress' ? (
+              <div className="space-y-2">
+                {surahProgress.length === 0 && (
+                  <div className="text-center p-8 bg-surface-variant rounded-xl neubrutalist-border border-dashed text-on-surface">
+                    <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search</span>
+                    <p className="font-label-bold">{t.noAyah}</p>
                   </div>
-                  <span className="material-symbols-outlined text-tertiary text-4xl">auto_stories</span>
-                  <div className="text-center">
-                    <div className="text-on-surface font-headline-md font-bold text-lg">
+                )}
+                {surahProgress.map((s) => (
+                  <div key={`surah-${s.surahNo}`} className="bg-surface p-3 rounded-xl neubrutalist-border">
+                    <div className="flex justify-between text-xs font-label-bold uppercase">
+                      <span>{`Surah ${s.surahName}`}</span>
+                      <span>{s.percent}%</span>
+                    </div>
+                    <div className="mt-2 h-3 bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
+                      <div className="h-full bg-brand-neon" style={{ width: `${s.percent}%` }} />
+                    </div>
+                    <div className="mt-1 text-[10px] uppercase font-label-bold">{s.unlocked}/{s.total}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {sortedCollectedAyahs.length === 0 && (
+                  <div className="col-span-1 sm:col-span-2 text-center p-8 bg-surface-variant rounded-xl neubrutalist-border border-dashed text-on-surface">
+                    <p className="font-label-bold">{t.noAyah}</p>
+                  </div>
+                )}
+                {sortedCollectedAyahs.map((id: string, index) => (
+                  <button key={id} onClick={() => openReplayAyah(id)} className="bg-parchment p-4 rounded-xl flex flex-col items-center gap-2 neubrutalist-border hard-shadow text-left">
+                    <span className="material-symbols-outlined text-tertiary text-3xl">replay</span>
+                    <div className="text-on-surface font-headline-md font-bold text-base">
                       {(() => {
-                        if (!id.includes(':')) return appLang === 'id' ? `Ayat #${index + 1}` : `Ayah #${index + 1}`;
+                        if (!id.includes(':')) return false ? `Ayah #${index + 1}` : `Ayah #${index + 1}`;
                         const [surahNoStr, ayahNo] = id.split(':');
                         const surahName = SURAH_NAMES[Number(surahNoStr)] || surahNoStr;
-                        return appLang === 'id'
-                          ? `Surat ${surahName} Ayat ${ayahNo}`
-                          : `Surah ${surahName} Ayah ${ayahNo}`;
+                        return false ? `Surah ${surahName} Ayah ${ayahNo}` : `Surah ${surahName} Ayah ${ayahNo}`;
                       })()}
                     </div>
-                    <div className="text-on-surface font-label-bold uppercase text-[10px] mt-1 shadow-sm px-2 py-0.5 rounded-full bg-surface-container neubrutalist-border inline-block">{t.savedToAccount}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="mt-8">
               <h3 className="text-sm font-label-bold uppercase tracking-widest mb-3 text-on-surface">Quran Bookmarks (Synced)</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2674,8 +2828,8 @@ export default function App() {
                       {(() => {
                         const [surahNoStr, ayahNo] = id.split(':');
                         const surahName = SURAH_NAMES[Number(surahNoStr)] || surahNoStr;
-                        return appLang === 'id'
-                          ? `Surat ${surahName} Ayat ${ayahNo}`
+                        return false
+                          ? `Surah ${surahName} Ayah ${ayahNo}`
                           : `Surah ${surahName} Ayah ${ayahNo}`;
                       })()}
                     </div>
@@ -2712,7 +2866,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="bg-surface-container-high p-5 rounded-2xl text-center neubrutalist-border hard-shadow">
                 <span className="material-symbols-outlined text-3xl text-primary mb-2">library_books</span>
                 <div className="text-2xl font-headline-md font-bold text-on-surface">{collectedIds.size}</div>
@@ -2722,6 +2876,11 @@ export default function App() {
                 <span className="material-symbols-outlined text-3xl text-tertiary mb-2">hotel_class</span>
                 <div className="text-2xl font-headline-md font-bold text-on-surface">LV. {Math.floor(xp / 100) + 1}</div>
                 <div className="text-[10px] font-label-bold text-on-surface uppercase mt-1">{t.masteryStat}</div>
+              </div>
+              <div className="bg-surface-container-high p-5 rounded-2xl text-center neubrutalist-border hard-shadow">
+                <span className="material-symbols-outlined text-3xl text-primary mb-2">diamond</span>
+                <div className="text-2xl font-headline-md font-bold text-on-surface">{essence}</div>
+                <div className="text-[10px] font-label-bold text-on-surface uppercase mt-1">{t.essence}</div>
               </div>
             </div>
 
@@ -2760,24 +2919,31 @@ export default function App() {
               >
                 {t.syncRetry} ({syncQueue.length})
               </button>
+              <button
+                onClick={resetSyncNow}
+                disabled={syncStatus === 'syncing' || !user?.isQuranAuth}
+                className="mt-2 w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase disabled:opacity-50"
+              >
+                {t.resetSync}
+              </button>
             </div>
 
             <div className="bg-surface-container-high p-5 rounded-2xl neubrutalist-border hard-shadow space-y-4">
               <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">{t.goalsReflections}</h3>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Target' : 'Goal'}</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">'Goal'</label>
                 <div className="grid grid-cols-3 gap-2">
                   <input
                     value={goalTitle}
                     onChange={(e) => setGoalTitle(e.target.value)}
-                    placeholder={appLang === 'id' ? 'Target Ayat Harian' : 'Daily Ayah Goal'}
+                    placeholder='Daily Ayah Goal'
                     className="col-span-2 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
                   <input
                     type="number"
                     min={1}
-                    value={goalTarget}
-                    onChange={(e) => setGoalTarget(Number(e.target.value) || 1)}
+                    value={goalGoal}
+                    onChange={(e) => setGoalGoal(Number(e.target.value) || 1)}
                     className="bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
                 </div>
@@ -2792,17 +2958,17 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Catatan' : 'Notes'}</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">'Notes'</label>
                 <input
                   value={noteVerseKey}
                   onChange={(e) => setNoteVerseKey(e.target.value)}
-                  placeholder={appLang === 'id' ? 'Kunci ayat (cth. 2:255)' : 'Verse key (e.g. 2:255)'}
+                  placeholder={false ? 'Verse key (e.g. 2:255)' : 'Verse key (e.g. 2:255)'}
                   className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                 />
                 <textarea
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
-                  placeholder={appLang === 'id' ? 'Tulis refleksimu...' : 'Write your reflection...'}
+                  placeholder='Write your reflection...'
                   className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs min-h-20"
                 />
                 <button onClick={createNote} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.saveNote}</button>
@@ -2816,12 +2982,12 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Koleksi' : 'Collections'}</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">'Collections'</label>
                 <div className="flex gap-2">
                   <input
                     value={collectionName}
                     onChange={(e) => setCollectionName(e.target.value)}
-                    placeholder={appLang === 'id' ? 'Nama koleksi' : 'Collection name'}
+                    placeholder='Collection name'
                     className="flex-1 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
                   <button onClick={createCollection} className="bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.addCollection}</button>
@@ -2839,15 +3005,6 @@ export default function App() {
 
             <div className="bg-surface-container-high p-5 rounded-2xl neubrutalist-border hard-shadow">
               <h3 className="text-sm font-label-bold uppercase tracking-widest mb-3 text-on-surface">{t.settings}</h3>
-              <label className="block text-[10px] font-label-bold uppercase tracking-widest mb-2">{t.language}</label>
-              <select
-                value={appLang}
-                onChange={(e) => setAppLang(e.target.value as AppLang)}
-                className="w-full bg-surface text-on-surface p-2 rounded-lg border-2 border-on-surface font-label-bold uppercase"
-              >
-                <option value="id">Indonesia</option>
-                <option value="en">English</option>
-              </select>
               <label className="block text-[10px] font-label-bold uppercase tracking-widest mt-4 mb-2">{t.qari}</label>
               <select
                 value={audioReciterId}
@@ -2885,6 +3042,7 @@ export default function App() {
                 localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
                 setUser(null);
                 setXp(0);
+                setEssence(0);
                 setStreak(0);
                 setRank('Seeker of Light');
                 setCollectedIds(new Set());
@@ -2899,7 +3057,7 @@ export default function App() {
         </div>
       )}
 
-      <BottomNav active={activeTab} onChange={setActiveTab} lang={appLang} />
+      <BottomNav active={activeTab} onChange={setActiveTab}   />
       
       {/* Removed compass and exp display from bottom */}
 
@@ -2909,7 +3067,7 @@ export default function App() {
             waypoint={selectedWaypoint}
             onCollect={onCollect}
             onClose={() => setSelectedWaypoint(null)}
-            lang={appLang}
+             
           />
         )}
       </AnimatePresence>
