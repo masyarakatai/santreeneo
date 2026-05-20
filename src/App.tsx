@@ -563,6 +563,7 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
+  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
   const celebrationPlayedRef = useRef(false);
   const [isClosing, setIsClosing] = useState(false);
   const [showFullAyah, setShowFullAyah] = useState(false);
@@ -822,12 +823,20 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
 
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+        audioRef.current.play()
+          .then(() => {
+            setIsPlaying(true);
+            setAutoPlayBlocked(false);
+          })
+          .catch(() => {
+            setAutoPlayBlocked(true);
+          });
       }
     }
 
     if (!isComplete) {
       celebrationPlayedRef.current = false;
+      setAutoPlayBlocked(false);
     }
   }, [isComplete, onCollect, isClosing]);
 
@@ -1096,6 +1105,15 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
                 </span>
               </button>
 	            </div>
+              {autoPlayBlocked && (
+                <button
+                  onClick={toggleAudio}
+                  className="mt-1 w-full bg-primary text-on-primary border-2 border-on-surface rounded-lg py-2 text-xs font-label-bold uppercase hard-shadow flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">play_arrow</span>
+                  Tap to play recitation
+                </button>
+              )}
 	            <div className="mt-1">
                 <div className="h-2 w-full bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
                   <div
