@@ -1735,7 +1735,7 @@ export default function App() {
                 const refreshedUser = {
                   ...cachedQuranAuth,
                   uid: p.id ? `quran-user-${String(p.id)}` : cachedQuranAuth.uid,
-                  displayName: p.name || (p.email ? String(p.email).split('@')[0] : cachedQuranAuth.displayName),
+                  displayName: p.username || p.name || (p.email ? String(p.email).split('@')[0] : cachedQuranAuth.displayName),
                   email: p.email || cachedQuranAuth.email,
                   photoURL: p.avatar || cachedQuranAuth.photoURL || '',
                 };
@@ -1788,7 +1788,7 @@ export default function App() {
             if (meResp.ok && meData?.profile) {
               const p = meData.profile;
               quranUser.uid = p.id ? `quran-user-${String(p.id)}` : quranUser.uid;
-              quranUser.displayName = p.name || (p.email ? String(p.email).split('@')[0] : quranUser.displayName);
+              quranUser.displayName = p.username || p.name || (p.email ? String(p.email).split('@')[0] : quranUser.displayName);
               quranUser.email = p.email || quranUser.email;
               quranUser.photoURL = p.avatar || '';
             }

@@ -50,13 +50,28 @@ async function startServer() {
       oauth2BaseUrl: oauthBaseUrl
     }
   });
-  const quranUserApiBase = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
+  const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
+  const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
+    ? quranUserApiBaseRaw.replace(/\/+$/, "")
+    : `${quranUserApiBaseRaw.replace(/\/+$/, "")}/quran-reflect`;
   const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const parseJsonSafe = (raw: string) => {
     try {
       return JSON.parse(raw);
     } catch {
       return { raw };
+    }
+  };
+  const decodeJwtPayloadSafe = (token?: string) => {
+    try {
+      if (!token) return null;
+      const parts = token.split(".");
+      if (parts.length < 2) return null;
+      const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
+      return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    } catch {
+      return null;
     }
   };
   const userApiHeaders = (accessToken: string, withJsonBody = false) => ({
@@ -429,6 +444,55 @@ async function startServer() {
       const authHeader = req.headers.authorization;
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
+      const debug = String(req.query.debug || '0') === '1';
+      const accessTokenClaims = decodeJwtPayloadSafe(accessToken);
+      const tokenSub = accessTokenClaims?.sub ? String(accessTokenClaims.sub) : null;
+      const tokenUsername = accessTokenClaims?.preferred_username
+        ? String(accessTokenClaims.preferred_username)
+        : null;
+
+      // Preferred profile source based on official user profile endpoint.
+      const reflectProfileCandidates = [
+        tokenSub ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,
+        tokenUsername ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenUsername)}?qdc=true` : null,
+        `${quranUserApiBase}/v1/users/me?qdc=true`,
+      ].filter(Boolean) as string[];
+      for (const url of reflectProfileCandidates) {
+        const resp = await fetch(url, {
+          headers: {
+            'x-auth-token': accessToken,
+            'x-client-id': process.env.QURAN_CLIENT_ID || '',
+            Accept: 'application/json',
+          },
+        });
+        const raw = await resp.text();
+        const data = parseJsonSafe(raw);
+        if (!resp.ok) continue;
+        const payload = data?.data || data?.user || data;
+        const fullName = [payload?.firstName, payload?.lastName].filter(Boolean).join(' ').trim();
+        const profile = {
+          id: payload?.id || tokenSub || null,
+          username: payload?.username || tokenUsername || null,
+          name: fullName || payload?.name || payload?.display_name || payload?.username || tokenUsername || null,
+          email: payload?.email || payload?.qdc?.email || null,
+          avatar:
+            payload?.photoUrl ||
+            payload?.avatar ||
+            payload?.avatarUrl ||
+            payload?.avatarUrls?.medium ||
+            payload?.avatarUrls?.small ||
+            payload?.avatarUrls?.large ||
+            payload?.qdc?.photoUrl ||
+            null,
+        };
+        if (profile.id || profile.name || profile.username || profile.email || profile.avatar) {
+          return res.json({
+            profile,
+            source: url,
+            ...(debug ? { debug: { payloadKeys: Object.keys(payload || {}) } } : {})
+          });
+        }
+      }
 
       // Try multiple likely profile endpoints and auth header styles for compatibility.
       const candidates = [
@@ -475,6 +539,11 @@ async function startServer() {
             payload?.display_name ||
             payload?.username ||
             null;
+          const usernameCandidate =
+            profileNode?.username ||
+            payload?.username ||
+            payload?.preferred_username ||
+            null;
           const emailCandidate =
             profileNode?.email ||
             payload?.email ||
@@ -482,21 +551,32 @@ async function startServer() {
           const avatarCandidate =
             profileNode?.avatar ||
             profileNode?.avatar_url ||
+            profileNode?.photo_url ||
+            profileNode?.profile_picture ||
+            profileNode?.profile_picture_url ||
             profileNode?.image_url ||
             profileNode?.profile_photo_url ||
             payload?.avatar ||
             payload?.avatar_url ||
+            payload?.photo_url ||
+            payload?.profile_picture ||
+            payload?.profile_picture_url ||
             payload?.image_url ||
             payload?.profile_photo_url ||
             null;
           const profile = {
             id: profileNode?.id || payload?.id || payload?.user_id || payload?.uuid || payload?.sub || null,
             name: nameCandidate,
+            username: usernameCandidate,
             email: emailCandidate,
             avatar: avatarCandidate,
           };
           if (profile.id || profile.name || profile.email || profile.avatar) {
-            return res.json({ profile, source: url });
+            return res.json({
+              profile,
+              source: url,
+              ...(debug ? { debug: { payloadKeys: Object.keys(payload || {}), profileKeys: Object.keys(profileNode || {}) } } : {})
+            });
           }
         }
       }
@@ -521,11 +601,16 @@ async function startServer() {
             const profile = {
               id: payload?.sub || payload?.id || null,
               name: payload?.name || payload?.preferred_username || null,
+              username: payload?.preferred_username || payload?.username || null,
               email: payload?.email || null,
-              avatar: payload?.picture || payload?.avatar || null,
+              avatar: payload?.picture || payload?.avatar || payload?.profile_picture || null,
             };
             if (profile.id || profile.name || profile.email || profile.avatar) {
-              return res.json({ profile, source: userinfoUrl });
+              return res.json({
+                profile,
+                source: userinfoUrl,
+                ...(debug ? { debug: { payloadKeys: Object.keys(payload || {}) } } : {})
+              });
             }
           }
         }
