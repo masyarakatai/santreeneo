@@ -621,6 +621,13 @@ export default function App() {
   const [selectedWaypoint, setSelectedWaypoint] = useState<(Waypoint & { isFar?: boolean, distance?: number }) | null>(null);
   const [discoveryRange] = useState(25); // 25 meters proximity
 
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const handleLocationChange = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'leaderboard') {
       const fetchLeaders = async () => {
@@ -885,6 +892,52 @@ export default function App() {
 
     setSelectedWaypoint(null);
   };
+
+  if (path === '/terms') {
+    return (
+      <div className="min-h-screen bg-surface p-8 overflow-y-auto font-body-md text-on-surface">
+        <button onClick={() => { window.history.pushState({}, '', '/'); setPath('/'); }} className="mb-6 flex items-center gap-2 text-primary font-bold">
+          <span className="material-symbols-outlined">arrow_back</span> BACK
+        </button>
+        <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
+          <h1 className="text-3xl font-bold mb-6">Terms and Conditions</h1>
+          <p><strong>Effective Date:</strong> May 20, 2026</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">1. Description of Service</h2>
+          <p>AyahQuest is an educational platform designed to encourage Quranic engagement through location-based discovery.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">2. Use of Geolocation</h2>
+          <p>AyahQuest requires access to your device's GPS location to function correctly. This data is used solely to "spawn" Quranic verses in your vicinity.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">3. Quranic Content</h2>
+          <p>All Quranic text, translations, and audio are provided via the Quran Foundation API.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">4. User Accounts</h2>
+          <p>If you choose to use the "Login with Quran.com" feature, you agree to allow AyahQuest to sync your bookmarks and streaks.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">5. Contact</h2>
+          <p>Questions? Contact us at <strong>santreedigitalid@gmail.com</strong></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (path === '/privacy') {
+    return (
+      <div className="min-h-screen bg-surface p-8 overflow-y-auto font-body-md text-on-surface">
+        <button onClick={() => { window.history.pushState({}, '', '/'); setPath('/'); }} className="mb-6 flex items-center gap-2 text-primary font-bold">
+          <span className="material-symbols-outlined">arrow_back</span> BACK
+        </button>
+        <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
+          <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
+          <p><strong>Effective Date:</strong> May 20, 2026</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">1. Information We Collect</h2>
+          <p>We access your GPS coordinates to display nearby Quranic verses. We collect basic profile info when you log in.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">2. How We Use Data</h2>
+          <p>To personalize your Quranic discovery experience and maintain your streaks.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">3. Data Storage</h2>
+          <p>We use Firebase and Quran Foundation API. We do not sell your personal data.</p>
+          <h2 className="text-xl font-bold mt-6 mb-2">4. Contact Us</h2>
+          <p>Questions? Contact us at <strong>santreedigitalid@gmail.com</strong></p>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading) return <div className="h-screen w-screen bg-surface flex items-center justify-center text-on-surface font-headline-md font-bold uppercase animate-pulse">GUIDING YOUR PATH...</div>;
   if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} onQuranLogin={handleQuranLogin} />;
