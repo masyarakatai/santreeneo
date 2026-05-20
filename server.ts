@@ -45,11 +45,15 @@ async function startServer() {
 
   app.get("/api/auth/quran", (req, res) => {
     const clientId = process.env.QURAN_CLIENT_ID;
-    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/quran/callback`;
+    // For production Vercel, we want to ensure it uses the public URL
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['host'] || req.get('host');
+    const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
+    
     const scope = 'openid profile email bookmarks activity';
-    // Using Production endpoint from the email
-    const authUrl = `https://oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
-    console.log("[AUTH] Redirecting to Production:", authUrl);
+    // Using PRELIVE endpoint for now as production scopes are pending approval
+    const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+    console.log("[AUTH] Redirecting with URI:", redirectUri);
     res.redirect(authUrl);
   });
 
