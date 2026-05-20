@@ -41,9 +41,10 @@ async function startServer() {
       const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
-
-      // Requesting available scopes. Removed 'email' due to client restrictions.
-      const scope = 'openid profile bookmarks activity reading_sessions goals notes reflections';
+      
+      // Reverting to bare minimum mandatory scopes to guarantee 100% success rate for the demo.
+      // This ensures juri can log in without any 'invalid scope' errors.
+      const scope = 'openid profile';
       const state = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 
       const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
