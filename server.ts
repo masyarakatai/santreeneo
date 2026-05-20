@@ -138,11 +138,14 @@ async function startServer() {
     try {
       const clientId = process.env.QURAN_CLIENT_ID;
       if (!clientId) {
-        return res.status(500).json({ error: "Missing QURAN_CLIENT_ID" });
+        return res.redirect('/?quran_login=error&reason=missing_client_id');
       }
 
       const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['host'] || req.get('host');
+      if (!host) {
+        return res.redirect('/?quran_login=error&reason=missing_host');
+      }
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
       
       // Always request `user` scope so profile/username can be fetched after login.
@@ -155,7 +158,8 @@ async function startServer() {
       console.log("[AUTH] Initiating with URI:", redirectUri);
       res.redirect(authUrl);
     } catch (err: any) {
-      res.status(500).json({ error: "Auth initiation failed", message: err.message });
+      console.error("[AUTH] initiation crash:", err?.message || err);
+      return res.redirect('/?quran_login=error&reason=auth_init_failed');
     }
   });
 
