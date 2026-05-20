@@ -53,9 +53,11 @@ export type Waypoint = {
   lng: number;
   ayahKey: string;
   arabicText: string;
+  tajweedText?: string;
   translation: string;
   points: number;
   audioUrl?: string;
   theme?: string;
   isContextual?: boolean;
+  wordsData?: { text: string, translation: string, id: number }[];
 };

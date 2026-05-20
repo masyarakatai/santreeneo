@@ -75,7 +75,7 @@ const LoginOverlay = () => (
   </div>
 );
 
-const XPHeader = ({ xp, rank }: { xp: number, rank: string }) => {
+const XPHeader = ({ xp, rank, streak }: { xp: number, rank: string, streak: number }) => {
   const level = Math.floor(xp / 100) + 1;
   const currentLevelXP = xp % 100;
 
@@ -83,8 +83,16 @@ const XPHeader = ({ xp, rank }: { xp: number, rank: string }) => {
     <header className="fixed top-0 left-0 right-0 z-[1000] flex items-center justify-between px-4 py-2 pointer-events-none">
       <div className="w-full rounded-full mx-2 mt-2 border-4 border-on-surface shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-primary flex items-center justify-between p-2 pointer-events-auto">
         {/* Left: Profile Badge */}
-        <div className="flex-shrink-0 w-12 h-12 rounded-full border-2 border-on-surface overflow-hidden bg-brand-secondary text-2xl flex items-center justify-center">
-          👦🏻
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <div className="w-12 h-12 rounded-full border-2 border-on-surface overflow-hidden bg-brand-secondary text-2xl flex items-center justify-center">
+            👦🏻
+          </div>
+          <div className="flex flex-col bg-surface-container rounded-lg px-2 py-0.5 border-2 border-on-surface">
+            <div className="flex items-center gap-1">
+              <span className="material-symbols-outlined text-[#ff5722] text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+              <span className="font-label-bold text-[10px] text-on-surface">{streak}</span>
+            </div>
+          </div>
         </div>
         
         {/* Center: Goal & Progress */}
@@ -347,15 +355,25 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
                 <span className="font-label-bold">Surah {chapterName || 'Ayah'}</span>
               </div>
             </div>
-            <div className="flex items-end justify-center h-16 gap-1 w-full px-2 py-1">
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-              <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
-            </div>
+            
+            {waypoint.tajweedText ? (
+              <div 
+                className="font-arabic-display text-2xl text-center leading-relaxed py-2 max-h-32 overflow-y-auto"
+                dir="rtl"
+                dangerouslySetInnerHTML={{ __html: waypoint.tajweedText }}
+              />
+            ) : (
+              <div className="flex items-end justify-center h-16 gap-1 w-full px-2 py-1">
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+                <div className={cn("visualizer-bar w-full max-w-[12px] bg-primary-fixed border-2 border-on-surface rounded-t-sm h-full", !isPlaying && "animation-play-paused")} style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}></div>
+              </div>
+            )}
+            
             <div className="flex justify-center gap-4 mt-1">
               <button disabled className="w-10 h-10 rounded-full border-4 border-on-surface bg-surface text-on-surface shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center opacity-50">
                 <span className="material-symbols-outlined text-sm">replay_10</span>
@@ -489,9 +507,12 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
                 <button 
                   key={`bank-${item.id}`}
                   onClick={() => handleWordClick(item.id)}
-                  className="h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary active:scale-95"
+                  className="h-24 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary active:scale-95 px-2"
                 >
-                  <span className="font-arabic-display text-4xl leading-none mt-2 pb-2">{item.word}</span>
+                  <span className="font-arabic-display text-3xl leading-none mt-2">{item.word}</span>
+                  <span className="text-[10px] font-label-bold text-on-surface-variant uppercase mt-1 text-center line-clamp-1">
+                    {waypoint.wordsData?.[item.id]?.translation || '...'}
+                  </span>
                 </button>
               );
             })}
@@ -552,6 +573,7 @@ export default function App() {
   const [coords, setCoords] = useState<[number, number]>([-6.2088, 106.8456]); 
   const [locationStatus, setLocationStatus] = useState<'waiting' | 'found' | 'error'>('waiting');
   const [xp, setXp] = useState(0);
+  const [streak, setStreak] = useState(0);
   const [rank, setRank] = useState('Seeker of Light');
   const [activeTab, setActiveTab] = useState('radar');
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
@@ -593,11 +615,13 @@ export default function App() {
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           setXp(profileSnap.data().xp || 0);
+          setStreak(profileSnap.data().streak || 0);
           setRank(profileSnap.data().rank || 'Seeker of Light');
           setCollectedIds(new Set(profileSnap.data().collectedIds || []));
         } else {
           await setDoc(profileRef, {
             xp: 0,
+            streak: 0,
             rank: 'Seeker of Light',
             userId: u.uid,
             name: u.displayName || 'Anonymous Seeker',
@@ -649,8 +673,14 @@ export default function App() {
             // The SDK usually unwraps the "verse" envelope and camelCases properties
             const verseKey = ayah.verseKey || ayah.verse_key;
             const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "Teks bahasa Arab tidak tersedia";
+            const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
             const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Terjemahan tidak tersedia";
             const audioUrl = ayah.audio?.url ? `https://verses.quran.com/${ayah.audio.url}` : undefined;
+            const wordsData = ayah.words?.map((w: any) => ({
+              text: w.textUthmani || w.text_uthmani,
+              translation: w.translation?.text,
+              id: w.id
+            })) || [];
 
             newWaypoints.push({
               id: Math.random().toString(36).substring(7),
@@ -658,12 +688,14 @@ export default function App() {
               lng,
               ayahKey: verseKey,
               arabicText: arabicText,
+              tajweedText: tajweedText,
               translation: translationText,
               audioUrl: audioUrl,
               points: ayah.metadata?.isContextual ? 25 : 15,
               theme: ayah.metadata?.theme,
-              isContextual: ayah.metadata?.isContextual
-            });
+              isContextual: ayah.metadata?.isContextual,
+              wordsData: wordsData
+            } as any);
           } catch(e) {
              // Fallback in case API fails
              newWaypoints.push({
@@ -749,6 +781,11 @@ export default function App() {
 
     const newXp = xp + awardedPoints;
     setXp(newXp);
+    
+    // Simple streak logic: increment for now to show the feature
+    const newStreak = streak + 1;
+    setStreak(newStreak);
+
     const newCollectedIds = new Set(collectedIds);
     newCollectedIds.add(selectedWaypoint.ayahKey);
     setCollectedIds(newCollectedIds);
@@ -775,10 +812,19 @@ export default function App() {
       const profileRef = doc(db, 'profiles', user.uid);
       await updateDoc(profileRef, { 
         xp: newXp, 
+        streak: newStreak,
         rank: newRank,
         name: user.displayName || 'Anonymous Seeker',
         collectedIds: Array.from(newCollectedIds)
       });
+
+      // SYNC WITH QURAN FOUNDATION USER API
+      fetch('/api/quran/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.uid, activity: 'ayah_collected' })
+      }).then(() => console.log("Synced with Quran Foundation API"));
+
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `profiles/${user.uid}`);
     }
@@ -791,7 +837,7 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen relative bg-surface overflow-hidden select-none touch-none bg-pattern">
-      <XPHeader xp={xp} rank={rank} />
+      <XPHeader xp={xp} rank={rank} streak={streak} />
       
       {locationStatus === 'error' && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[90%] max-w-sm bg-error-container neubrutalist-border hard-shadow px-4 py-3 rounded-2xl flex items-start gap-3">
