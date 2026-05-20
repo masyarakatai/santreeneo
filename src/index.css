@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=Noto+Serif:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&family=Noto+Serif:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 
@@ -10,7 +10,7 @@
   --font-headline-lg: "Inter", sans-serif;
   --font-display-lg: "Inter", sans-serif;
   --font-body-lg: "Inter", sans-serif;
-  --font-arabic-display: "Noto Serif", serif;
+  --font-arabic-display: "Noto Naskh Arabic", "Amiri", "Scheherazade New", "Traditional Arabic", serif;
   --font-headline-md: "Inter", sans-serif;
 
   --color-background: #f6fbf0;
@@ -22,7 +22,7 @@
   --color-on-tertiary-fixed: #3e001d;
   --color-surface-dim: #d7dcd1;
   --color-inverse-primary: #82db7e;
-  --color-on-surface-variant: #40493d;
+  --color-on-surface-variant: #232b21;
   --color-surface-container: #ebf0e5;
   --color-on-error: #ffffff;
   --color-on-primary: #ffffff;
@@ -196,4 +196,144 @@
 /* Map specific styling */
 .leaflet-container {
   background: #e7d7cd !important;
+}
+
+.marker-gold-glow {
+  background: radial-gradient(circle at 30% 30%, #fff6c7 0%, #ffd85f 45%, #f0b200 100%);
+  box-shadow: 0 0 0 3px rgba(255, 214, 102, 0.65), 0 0 22px 7px rgba(255, 194, 45, 0.65), 4px 4px 0 rgba(34,26,20,1);
+  animation: goldPulse 1.9s ease-in-out infinite;
+}
+
+.marker-emerald-glow {
+  background: radial-gradient(circle at 30% 30%, #d7ffe7 0%, #4cd08a 45%, #118a4f 100%);
+  box-shadow: 0 0 0 3px rgba(91, 232, 150, 0.65), 0 0 22px 7px rgba(27, 179, 103, 0.62), 4px 4px 0 rgba(34,26,20,1);
+  animation: emeraldPulse 2.1s ease-in-out infinite;
+}
+
+.marker-gray-locked {
+  background: radial-gradient(circle at 30% 30%, #f4f5f7 0%, #c8ced6 45%, #8a949f 100%);
+  box-shadow: 0 0 0 3px rgba(168, 176, 186, 0.55), 0 0 16px 4px rgba(122, 132, 143, 0.45), 4px 4px 0 rgba(34,26,20,1);
+  opacity: 0.9;
+  filter: saturate(0.8);
+}
+
+@keyframes goldPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.06); }
+}
+
+@keyframes emeraldPulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.045); filter: brightness(1.08); }
+}
+
+/* Reusable subtle animated glow utilities */
+.glow-gold-soft {
+  animation: glowGoldSoft 2.2s ease-in-out infinite;
+}
+.glow-emerald-soft {
+  animation: glowEmeraldSoft 2.4s ease-in-out infinite;
+}
+.glow-neon-soft {
+  animation: glowNeonSoft 2s ease-in-out infinite;
+}
+
+@keyframes glowGoldSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 196, 56, 0.35); }
+  50% { box-shadow: 0 0 18px 3px rgba(255, 196, 56, 0.55); }
+}
+@keyframes glowEmeraldSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.30); }
+  50% { box-shadow: 0 0 16px 3px rgba(16, 185, 129, 0.50); }
+}
+@keyframes glowNeonSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 255, 0, 0.25); }
+  50% { box-shadow: 0 0 14px 3px rgba(212, 255, 0, 0.48); }
+}
+
+/* Leaderboard podium animated glows */
+.leaderboard-top1 {
+  animation: leaderboardGoldGlow 2.2s ease-in-out infinite;
+}
+.leaderboard-top2 {
+  animation: leaderboardSilverGlow 2.5s ease-in-out infinite;
+}
+.leaderboard-top3 {
+  animation: leaderboardBronzeGlow 2.7s ease-in-out infinite;
+}
+
+.leaderboard-top1::before,
+.leaderboard-top2::before,
+.leaderboard-top3::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -35%;
+  width: 28%;
+  height: 140%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.82) 50%, rgba(255,255,255,0) 100%);
+  pointer-events: none;
+}
+
+.leaderboard-top1::before { animation: leaderboardSweep 2.1s ease-in-out infinite; }
+.leaderboard-top2::before { animation: leaderboardSweep 2.35s ease-in-out infinite; }
+.leaderboard-top3::before { animation: leaderboardSweep 2.55s ease-in-out infinite; }
+
+@keyframes leaderboardGoldGlow {
+  0%, 100% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 0 0 rgba(255, 201, 71, 0.35);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 24px 6px rgba(255, 201, 71, 0.7);
+    filter: brightness(1.05);
+  }
+}
+
+@keyframes leaderboardSilverGlow {
+  0%, 100% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 0 0 rgba(213, 220, 230, 0.35);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 20px 5px rgba(213, 220, 230, 0.66);
+    filter: brightness(1.04);
+  }
+}
+
+@keyframes leaderboardBronzeGlow {
+  0%, 100% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 0 0 rgba(230, 157, 96, 0.34);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 6px 6px 0 0 rgba(34, 26, 20, 1), 0 0 20px 5px rgba(230, 157, 96, 0.62);
+    filter: brightness(1.04);
+  }
+}
+
+@keyframes leaderboardSweep {
+  0% { left: -35%; opacity: 0; }
+  10% { opacity: 1; }
+  55% { left: 110%; opacity: 1; }
+  100% { left: 110%; opacity: 0; }
+}
+
+/* Keep required attribution visible but unobtrusive */
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #3b3b3b !important;
+  border-radius: 6px 0 0 0 !important;
+  padding: 2px 6px !important;
+  opacity: 0.75 !important;
+}
+.leaflet-control-attribution a {
+  color: #2d2d2d !important;
+  text-decoration: none !important;
+}
+.leaflet-control-attribution:hover {
+  opacity: 0.95 !important;
 }
