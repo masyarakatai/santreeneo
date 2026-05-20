@@ -186,7 +186,7 @@ const SURAH_NAMES: Record<number, string> = {
 const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void, onQuranLogin: () => void,   }) => {
   const t = UI_TEXT;
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
+    <div className="fixed inset-0 z-[3000] flex flex-col items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -201,22 +201,14 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
         </div>
         
         <div className="flex flex-col gap-4 w-full">
-          {window.location.hostname === 'localhost' && (
-            <button 
-              onClick={() => {
-                window.location.href = '/?quran_login=success#access_token=mock_token_for_dev';
-              }}
-              className="w-full bg-yellow-400 text-on-surface font-label-bold py-2 rounded-xl border-2 border-on-surface shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-[10px] mb-2 uppercase"
-            >
-              🛠️ DEV: MOCK QURAN LOGIN
-            </button>
-          )}
           <button 
             onClick={onQuranLogin}
-            className="w-full bg-brand-neon text-on-surface font-headline-md font-bold py-5 rounded-2xl flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
+            className="w-full bg-brand-neon text-on-surface font-headline-md font-bold py-0 rounded-2xl flex items-stretch justify-center gap-0 neubrutalist-border hard-shadow neubrutalist-interaction transition-all overflow-hidden"
           >
-            <img src="https://quran.com/images/logos/logo-quran.png" alt="Quran" className="w-8 h-8 invert" />
-            {t.loginQuran}
+            <span className="bg-white px-3 min-w-[54px] flex items-center justify-center border-r-2 border-on-surface">
+              <img src="/logoquran.webp" alt="Quran" className="h-8 w-auto object-contain" />
+            </span>
+            <span className="flex-1 py-5 px-3 text-center">{t.loginQuran}</span>
           </button>
 
           <button 
@@ -226,9 +218,25 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
             {t.guest}
           </button>
         </div>
-
         <p className="text-[11px] text-on-surface italic px-4 leading-relaxed">{t.loginSubtitle}</p>
       </motion.div>
+      <div className="mt-4 flex items-center justify-center gap-2">
+        <span className="text-sm font-black uppercase tracking-[0.16em] text-on-surface">FMD</span>
+        <span className="text-[10px] font-label-bold uppercase tracking-widest text-on-surface/80">ft.</span>
+        <a
+          href="https://zanjabila.or.id"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center"
+        >
+          <img
+            src="https://zanjabila.or.id/logo.webp"
+            alt="Zanjabila"
+            className="h-5 w-auto object-contain"
+            loading="lazy"
+          />
+        </a>
+      </div>
     </div>
   );
 };
@@ -493,7 +501,7 @@ const SmartRadar = ({
   );
 };
 
-const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void,   }) => {
+const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote, canSaveReplayNote = false }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void, notes?: QuranNote[], onSaveReplayNote?: (verseKey: string, content: string) => Promise<void>, canSaveReplayNote?: boolean,   }) => {
   type GameMode = 'arrange' | 'continue' | 'meaning' | 'audio';
   const t = UI_TEXT;
   const [insightLoading, setInsightLoading] = useState(false);
@@ -576,6 +584,7 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
   const [audioQuizPlaying, setAudioQuizPlaying] = useState(false);
   const [audioSnippetStage, setAudioSnippetStage] = useState(1);
   const [continueGapIndex, setContinueGapIndex] = useState<number>(-1);
+  const [replayNoteText, setReplayNoteText] = useState('');
   const randomizeGameMode = useCallback(() => {
     const modes: GameMode[] = ['arrange', 'continue', 'meaning', 'audio'];
     return modes[Math.floor(Math.random() * modes.length)];
@@ -665,6 +674,8 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
     (gameMode === 'arrange' && hasArrangeWords && selectedWords.length === words.length) ||
     (gameMode !== 'arrange' && !!quizCorrect && quizSelected === quizCorrect);
   const playbackCompleted = !audioRef.current || audioDuration === 0 || audioCurrentTime >= Math.max(0, audioDuration - 0.25);
+  const hasPlayableAudio = !!waypoint.audioUrl;
+  const canClaimReward = playbackCompleted || autoPlayBlocked || !hasPlayableAudio;
   const cleanArabicText = getCleanArabicText();
   const isLongAyah = cleanArabicText.length > 180 || cleanArabicText.split(/\s+/).length > 24;
   const activeTranslation = insightData?.translation || waypoint.translation || 'Translation unavailable.';
@@ -909,7 +920,14 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
     setContinueGapIndex(-1);
   }, [waypoint.id, randomizeGameMode]);
 
+  useEffect(() => {
+    if (!waypoint.replayOnly) return;
+    const initial = (notes.find((n) => String(n.verseKey) === String(waypoint.ayahKey))?.content || '').trim();
+    setReplayNoteText(initial);
+  }, [waypoint.replayOnly, waypoint.ayahKey, notes]);
+
   if (waypoint.replayOnly) {
+    const verseNotes = notes.filter((n) => String(n.verseKey) === String(waypoint.ayahKey));
     return (
       <div className="fixed inset-0 z-[2000] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-3">
         <div className="border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-xl w-full max-w-sm max-h-[86vh] flex flex-col bg-brand-secondary overflow-hidden">
@@ -937,15 +955,44 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
               <p className="text-xs italic">"{insightData?.translation || waypoint.translation || 'Translation unavailable.'}"</p>
             </div>
 
+            <div className="bg-surface border-2 border-on-surface rounded-xl p-2.5 space-y-2">
+              <p className="text-[10px] font-label-bold uppercase tracking-widest">Notes</p>
+              {verseNotes.length > 0 && (
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {verseNotes.slice(0, 3).map((n) => (
+                    <div key={n.id} className="bg-white border-2 border-on-surface rounded-lg p-2 text-xs">
+                      {n.content}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <textarea
+                value={replayNoteText}
+                onChange={(e) => setReplayNoteText(e.target.value)}
+                placeholder="Write reflection for this ayah..."
+                className="w-full bg-white border-2 border-on-surface rounded-lg px-2 py-2 text-xs min-h-16"
+              />
+              <button
+                onClick={async () => {
+                  if (!onSaveReplayNote) return;
+                  await onSaveReplayNote(waypoint.ayahKey, replayNoteText);
+                }}
+                disabled={!canSaveReplayNote || !replayNoteText.trim()}
+                className="w-full bg-brand-neon text-on-surface border-2 border-on-surface rounded-lg py-2 text-xs font-label-bold uppercase disabled:opacity-50"
+              >
+                Save Note
+              </button>
+            </div>
+
             <div className="bg-white border-2 border-on-surface rounded-xl p-3">
               <div className="flex justify-center mb-2">
                 <button
                   onClick={toggleAudio}
-                  disabled={!audioRef.current}
-                  className={cn(
-                    "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center",
-                    !audioRef.current && "opacity-50"
-                  )}
+                disabled={!hasPlayableAudio}
+                className={cn(
+                  "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center",
+                  !hasPlayableAudio && "opacity-50"
+                )}
                 >
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
                     {isPlaying ? 'pause' : 'play_arrow'}
@@ -1094,10 +1141,10 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
 	            <div className="flex justify-center gap-3 mt-0.5">
               <button 
                 onClick={toggleAudio}
-                disabled={!audioRef.current}
+                disabled={!hasPlayableAudio}
                 className={cn(
                   "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all",
-                  !audioRef.current && "opacity-50"
+                  !hasPlayableAudio && "opacity-50"
                 )}
               >
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -1132,10 +1179,10 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
           <div className={cn("shrink-0 px-4 pt-2 pb-4 border-t-2 border-on-surface/20", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
 	          <button 
 	            onClick={handleClaimAndClose}
-                disabled={!playbackCompleted}
+                disabled={!canClaimReward}
 	            className={cn(
                   "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-3 px-3 font-headline-md font-bold uppercase tracking-wide transition-all mt-1.5 flex items-center justify-center gap-2 group relative overflow-hidden",
-                  playbackCompleted ? "hover:translate-x-1 hover:translate-y-1 cursor-pointer reward-glow-sweep" : "opacity-55 cursor-not-allowed"
+                  canClaimReward ? "hover:translate-x-1 hover:translate-y-1 cursor-pointer reward-glow-sweep" : "opacity-55 cursor-not-allowed"
                 )}
 	            style={{
 	              background: 'linear-gradient(180deg, #FFF3B0 0%, #FFD54F 45%, #F6B10A 100%)',
@@ -1145,7 +1192,7 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
 	            {t.claimReward}
 	            <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">star</span>
 	          </button>
-              {!playbackCompleted && (
+              {!canClaimReward && (
                 <p className="text-[10px] font-label-bold text-on-surface text-center -mt-3">
                   'Wait until audio finishes to claim reward.'
                 </p>
@@ -1820,11 +1867,8 @@ export default function App() {
           quranUser.displayName = String(quranUser.email).split('@')[0];
         }
         localStorage.setItem(QURAN_AUTH_STORAGE_KEY, JSON.stringify(quranUser));
-      };
-      bootstrapQuranUser();
-      
-      // Load/Create Game Profile in Firebase based on Quran.com ID
-      const syncProfile = async () => {
+
+        // Load/Create Game Profile in Firebase AFTER uid has been finalized.
         const profileRef = doc(db, 'profiles', quranUser.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
@@ -1843,7 +1887,7 @@ export default function App() {
           });
         }
       };
-      syncProfile();
+      bootstrapQuranUser();
 
       // Clean up URL
       window.history.replaceState({}, document.title, "/");
@@ -1913,7 +1957,7 @@ export default function App() {
 
   const createGoal = async () => {
     if (!user?.isQuranAuth || !user?.accessToken) return;
-    const payload = { title: goalTitle || 'Daily Ayah Goal', target: Number(goalGoal) || 7 };
+    const payload = { title: 'Daily Ayah Goal', target: Number(goalGoal) || 7 };
     try {
       const res = await fetch('/api/quran/goals', {
         method: 'POST',
@@ -1931,10 +1975,10 @@ export default function App() {
     }
   };
 
-  const createNote = async () => {
+  const createNoteForVerse = async (verseKeyInput: string, contentInput: string) => {
     if (!user?.isQuranAuth || !user?.accessToken) return;
-    const verseKey = noteVerseKey || selectedWaypoint?.ayahKey || Array.from(collectedIds)[0] || '2:255';
-    const payload = { verse_key: verseKey, content: noteText };
+    const verseKey = verseKeyInput || selectedWaypoint?.ayahKey || Array.from(collectedIds)[0] || '2:255';
+    const payload = { verse_key: verseKey, content: contentInput };
     if (!payload.content.trim()) return;
     try {
       const res = await fetch('/api/quran/notes', {
@@ -1943,16 +1987,19 @@ export default function App() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('note sync failed');
-      setNoteText('');
-      setNoteVerseKey('');
       await loadQuranUserData(user.accessToken);
       setSyncStatus(syncQueue.length > 0 ? 'pending' : 'synced');
     } catch {
       queueSyncItem('/api/quran/notes', payload);
       setNotes((prev) => [...prev, { id: `local-note-${Date.now()}`, verseKey, content: payload.content }]);
-      setNoteText('');
-      setNoteVerseKey('');
     }
+  };
+
+  const createNote = async () => {
+    const verseKey = noteVerseKey || selectedWaypoint?.ayahKey || Array.from(collectedIds)[0] || '2:255';
+    await createNoteForVerse(verseKey, noteText);
+    setNoteText('');
+    setNoteVerseKey('');
   };
 
   const createCollection = async () => {
@@ -2828,6 +2875,11 @@ export default function App() {
                         return false ? `Surah ${surahName} Ayah ${ayahNo}` : `Surah ${surahName} Ayah ${ayahNo}`;
                       })()}
                     </div>
+                    {notes.some((n) => String(n.verseKey) === String(id)) && (
+                      <span className="text-[10px] font-label-bold uppercase bg-brand-neon border-2 border-on-surface rounded-full px-2 py-0.5">
+                        Has note
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -2916,7 +2968,7 @@ export default function App() {
                   Sync: {syncStatus}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="bg-surface rounded-xl neubrutalist-border p-2">
                   <div className="text-lg font-headline-md font-bold">{streak}</div>
                   <div className="text-[10px] font-label-bold uppercase">Streak</div>
@@ -2924,10 +2976,6 @@ export default function App() {
                 <div className="bg-surface rounded-xl neubrutalist-border p-2">
                   <div className="text-lg font-headline-md font-bold">{notes.length}</div>
                   <div className="text-[10px] font-label-bold uppercase">Notes</div>
-                </div>
-                <div className="bg-surface rounded-xl neubrutalist-border p-2">
-                  <div className="text-lg font-headline-md font-bold">{collectionsData.length}</div>
-                  <div className="text-[10px] font-label-bold uppercase">Collections</div>
                 </div>
               </div>
               <button
@@ -2950,19 +2998,19 @@ export default function App() {
               <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">{t.goalsReflections}</h3>
               <div className="space-y-2">
                 <label className="text-[10px] font-label-bold uppercase tracking-widest">'Goal'</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="bg-surface border-2 border-on-surface rounded-lg px-3 py-3">
+                  <div className="flex items-center justify-between text-xs font-label-bold uppercase mb-2">
+                    <span>Daily Ayah Goal</span>
+                    <span>{goalGoal}</span>
+                  </div>
                   <input
-                    value={goalTitle}
-                    onChange={(e) => setGoalTitle(e.target.value)}
-                    placeholder='Daily Ayah Goal'
-                    className="col-span-2 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
-                  />
-                  <input
-                    type="number"
+                    type="range"
                     min={1}
+                    max={30}
+                    step={1}
                     value={goalGoal}
                     onChange={(e) => setGoalGoal(Number(e.target.value) || 1)}
-                    className="bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
+                    className="w-full"
                   />
                 </div>
                 <button onClick={createGoal} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.saveGoal}</button>
@@ -2975,49 +3023,10 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">'Notes'</label>
-                <input
-                  value={noteVerseKey}
-                  onChange={(e) => setNoteVerseKey(e.target.value)}
-                  placeholder={false ? 'Verse key (e.g. 2:255)' : 'Verse key (e.g. 2:255)'}
-                  className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
-                />
-                <textarea
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-                  placeholder='Write your reflection...'
-                  className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs min-h-20"
-                />
-                <button onClick={createNote} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.saveNote}</button>
-                <div className="space-y-1">
-                  {notes.slice(0, 3).map((n) => (
-                    <div key={n.id} className="bg-surface rounded-lg border-2 border-on-surface p-2">
-                      <div className="text-[10px] font-label-bold uppercase">{n.verseKey}</div>
-                      <div className="text-xs line-clamp-2">{n.content}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">'Collections'</label>
-                <div className="flex gap-2">
-                  <input
-                    value={collectionName}
-                    onChange={(e) => setCollectionName(e.target.value)}
-                    placeholder='Collection name'
-                    className="flex-1 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
-                  />
-                  <button onClick={createCollection} className="bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.addCollection}</button>
-                </div>
-                <div className="space-y-1">
-                  {collectionsData.slice(0, 3).map((c) => (
-                    <div key={c.id} className="bg-surface rounded-lg border-2 border-on-surface p-2 flex justify-between text-xs">
-                      <span className="font-label-bold">{c.name}</span>
-                      <span>{c.count || 0}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-label-bold uppercase tracking-widest text-on-surface/70">
+                  Notes are now managed in Journey &gt; Replay Ayah
+                </p>
               </div>
             </div>
 
@@ -3085,7 +3094,9 @@ export default function App() {
             waypoint={selectedWaypoint}
             onCollect={onCollect}
             onClose={() => setSelectedWaypoint(null)}
-             
+            notes={notes}
+            onSaveReplayNote={createNoteForVerse}
+            canSaveReplayNote={!!(user?.isQuranAuth && user?.accessToken)}
           />
         )}
       </AnimatePresence>
