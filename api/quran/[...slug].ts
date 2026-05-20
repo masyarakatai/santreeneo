@@ -116,6 +116,26 @@ export default async function handler(req: any, res: any) {
       return res.json({ profile: null, source: 'unavailable' });
     }
 
+    if (route === 'random-verse') {
+      const lang = req.query.language === 'en' ? 'en' : 'id';
+      const translationId = lang === 'id' ? '33' : '20';
+      const audioId = String(req.query.audio || '7');
+      const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
+      const data = await resp.json();
+      if (!resp.ok) return res.status(resp.status).json(data);
+      return res.json(data);
+    }
+
+    if (route.startsWith('chapter-info/')) {
+      const chapterId = slugParts[1];
+      if (!chapterId) return res.status(400).json({ error: 'Missing chapterId' });
+      const lang = req.query.language === 'en' ? 'en' : 'id';
+      const resp = await fetch(`https://api.quran.com/api/v4/chapters/${chapterId}/info?language=${lang}`);
+      const data = await resp.json();
+      if (!resp.ok) return res.status(resp.status).json(data);
+      return res.json(data);
+    }
+
     if (route === 'bookmarks') {
       if (!accessToken) return res.status(401).json({ error: 'Unauthorized' });
       if (req.method === 'GET') {
@@ -198,10 +218,10 @@ export default async function handler(req: any, res: any) {
         general: ['1:1', '2:255', '39:53', '94:5', '94:6', '93:4', '112:1'],
       };
       const chosen = (pools[contextTheme] || pools.general)[Math.floor(Math.random() * (pools[contextTheme] || pools.general).length)];
-      const byKeyResp = await fetch(`https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+      const byKeyResp = await fetch(`https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
       const byKeyData: any = await byKeyResp.json();
       if (!byKeyResp.ok || !byKeyData?.verse) {
-        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
         const fallback: any = await resp.json();
         const verse = fallback?.verse || fallback;
         return res.json({ ...fallback, verse: { ...verse, metadata: { theme: contextTheme, contextLabel, isContextual: contextTheme !== 'general' } } });
@@ -217,7 +237,7 @@ export default async function handler(req: any, res: any) {
       const translationIds = lang === 'id' ? '33,20' : '20,33';
       const tafsirIdsPrimary = lang === 'id' ? '168,169' : '169,168';
       const tafsirIdsFallback = lang === 'id' ? '169,168' : '168,169';
-      const verseResp = await fetch(`https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(verseKey)}?translations=${translationIds}&tafsirs=${tafsirIdsPrimary}&fields=text_uthmani,text_uthmani_tajweed`);
+      const verseResp = await fetch(`https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(verseKey)}?translations=${translationIds}&tafsirs=${tafsirIdsPrimary}&fields=text_uthmani,text_uthmani_tajweed&words=true&word_fields=text_uthmani`);
       const verseData = await verseResp.json();
       if (!verseResp.ok || !verseData?.verse) return res.status(verseResp.status || 500).json({ error: 'Failed to fetch verse insight', provider: verseData });
       const translations = verseData.verse.translations || [];

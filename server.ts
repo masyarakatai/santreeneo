@@ -46,6 +46,7 @@ async function startServer() {
   const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
     ? quranUserApiBaseRaw.replace(/\/+$/, "")
     : `${quranUserApiBaseRaw.replace(/\/+$/, "")}/quran-reflect`;
+
   const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const parseJsonSafe = (raw: string) => {
     try {
@@ -210,7 +211,7 @@ async function startServer() {
       const lang = req.query.language === 'en' ? 'en' : 'id';
       const translationId = lang === 'id' ? '33' : '20';
       const audioId = String(req.query.audio || '7');
-      const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+      const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
       res.json(await resp.json());
     } catch (e) {
       res.status(500).json({ error: 'Failed' });
@@ -268,12 +269,12 @@ async function startServer() {
       const pool = themedVersePools[contextTheme] || themedVersePools.general;
       const chosen = pool[Math.floor(Math.random() * pool.length)];
       const byKeyResp = await fetch(
-        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`
+        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`
       );
       const byKeyData: any = await byKeyResp.json();
 
       if (!byKeyResp.ok || !byKeyData?.verse) {
-        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true`);
+        const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
         const fallback: any = await resp.json();
         const verse = fallback?.verse || fallback;
         return res.json({
@@ -748,7 +749,7 @@ async function startServer() {
       const tafsirIdsFallback = lang === 'id' ? '169,168' : '168,169';
 
       const verseResp = await fetch(
-        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(verseKey)}?translations=${translationIds}&tafsirs=${tafsirIdsPrimary}&fields=text_uthmani,text_uthmani_tajweed`
+        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(verseKey)}?translations=${translationIds}&tafsirs=${tafsirIdsPrimary}&fields=text_uthmani,text_uthmani_tajweed&words=true&word_fields=text_uthmani`
       );
       const verseData = await verseResp.json();
 

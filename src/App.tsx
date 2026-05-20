@@ -1896,12 +1896,19 @@ export default function App() {
 
       // Fetch Live Bookmarks if we have a token
       if (accessToken && accessToken !== 'mock_token_for_dev') {
-        fetch('/api/quran/bookmarks', {
+        fetch('/api/quran/bookmarks?mushafId=4', {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         })
-        .then(res => res.json())
+        .then(async res => {
+          if (!res.ok) return { bookmarks: [] };
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            return res.json();
+          }
+          return { bookmarks: [] };
+        })
         .then(data => {
-          if (data.bookmarks) {
+          if (data && data.bookmarks) {
             const ayahKeys = data.bookmarks.map((b: any) => `${b.verse_key}`);
             setQuranBookmarkIds(new Set(ayahKeys));
           }
@@ -2081,9 +2088,11 @@ export default function App() {
             const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "Arabic text unavailable";
             const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
             const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";
-            const audioUrl = ayah.audio?.url ? `https://verses.quran.com/${ayah.audio.url}` : undefined;
+            const audioUrl = ayah.audio?.url 
+              ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
+              : undefined;
             const wordsData = ayah.words?.map((w: any) => ({
-              text: w.textUthmani || w.text_uthmani,
+              text: w.text || w.textUthmani || w.text_uthmani,
               translation: w.translation?.text,
               id: w.id
             })) || [];
@@ -2103,17 +2112,15 @@ export default function App() {
               wordsData: wordsData
             } as any;
           } catch(e) {
-             // Fallback
-             const randomSurah = Math.floor(Math.random() * 114) + 1;
-             const randomAyah = Math.floor(Math.random() * 7) + 1;
+             // Fallback to Ayat Kursi if API fails
              return {
                id: Math.random().toString(36).substring(7),
                lat,
                lng,
-               ayahKey: `${randomSurah}:${randomAyah}`,
-               arabicText: "Arabic text unavailable",
-               translation: "Translation unavailable",
-               points: 15
+               ayahKey: "2:255",
+               arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
+               translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
+               points: 25
              } as any;
           }
         });
@@ -2161,9 +2168,11 @@ export default function App() {
       const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "تجربة";
       const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
       const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";
-      const audioUrl = ayah.audio?.url ? `https://verses.quran.com/${ayah.audio.url}` : undefined;
+      const audioUrl = ayah.audio?.url 
+        ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
+        : undefined;
       const wordsData = ayah.words?.map((w: any) => ({
-        text: w.textUthmani || w.text_uthmani,
+        text: w.text || w.textUthmani || w.text_uthmani,
         translation: w.translation?.text,
         id: w.id
       })) || [];
@@ -2186,9 +2195,9 @@ export default function App() {
         id: Math.random().toString(36).substring(7),
         lat,
         lng,
-        ayahKey: `${Math.floor(Math.random() * 114) + 1}:${Math.floor(Math.random() * 7) + 1}`,
-        arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ",
-        translation: "Allah, there is no deity except Him.",
+        ayahKey: "2:255",
+        arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
+        translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
         points: 20
       } as Waypoint;
     }
@@ -2271,8 +2280,8 @@ export default function App() {
         (err) => {
           // GPS timeout is common on desktop/weak signal; avoid noisy hard errors.
           console.warn('Geolocation issue:', err?.message || err);
-          // Timeout on some devices/browsers is common; try one-shot fallback first.
-          if (err.code === err.TIMEOUT && !didResolveLocation) {
+          // Try one-shot fallback first if we haven't resolved yet.
+          if (!didResolveLocation) {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
                 didResolveLocation = true;
@@ -2284,15 +2293,13 @@ export default function App() {
                 setCoords(DEFAULT_FALLBACK_COORDS);
                 setLocationStatus('found');
               },
-              { enableHighAccuracy: false, maximumAge: 300000, timeout: 30000 }
+              { enableHighAccuracy: false, maximumAge: 300000, timeout: 15000 }
             );
             return;
           }
-          // Non-timeout errors still show fallback manual panel, but map remains usable.
-          setCoords(DEFAULT_FALLBACK_COORDS);
-          setLocationStatus('found');
+          // If we already resolved but lost signal, keep last known coords.
         },
-        { enableHighAccuracy: true, maximumAge: 60000, timeout: 20000 }
+        { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
       );
       return () => navigator.geolocation.clearWatch(watchId);
     } else {
@@ -2622,7 +2629,14 @@ export default function App() {
       await Promise.all([
         loadQuranUserData(user.accessToken),
         fetch('/api/quran/bookmarks?mushafId=4', { headers: { Authorization: `Bearer ${user.accessToken}` } })
-          .then((r) => r.json())
+          .then(async (r) => {
+            if (!r.ok) return { data: [] };
+            const contentType = r.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              return r.json();
+            }
+            return { data: [] };
+          })
           .then((data) => {
             const ayahKeys = Array.isArray(data?.data)
               ? data.data
