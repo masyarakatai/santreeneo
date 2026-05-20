@@ -1,4 +1,4 @@
-import { authFromHeader, decodeJwtPayloadSafe, oauthBaseUrl, parseJsonSafe, quranUserApiBase } from "../_lib/common";
+import { authFromHeader, decodeJwtPayloadSafe, oauthBaseUrl, parseJsonSafe, quranUserApiBase } from "../../lib/api-common";
 
 export default async function handler(req: any, res: any) {
   try {

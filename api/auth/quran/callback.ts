@@ -1,4 +1,4 @@
-import { oauthBaseUrl, parseCookies } from "../../_lib/common";
+import { oauthBaseUrl, parseCookies } from "../../../lib/api-common";
 
 export default async function handler(req: any, res: any) {
   const { code, error, error_description, state } = req.query || {};

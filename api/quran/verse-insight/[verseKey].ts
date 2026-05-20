@@ -1,4 +1,4 @@
-import { stripHtml } from "../../_lib/common";
+import { stripHtml } from "../../../lib/api-common";
 
 export default async function handler(req: any, res: any) {
   try {

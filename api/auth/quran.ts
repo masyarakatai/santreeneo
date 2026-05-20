@@ -1,4 +1,4 @@
-import { oauthBaseUrl, oauthScope } from "../_lib/common";
+import { oauthBaseUrl, oauthScope } from "../../lib/api-common";
 
 export default function handler(req: any, res: any) {
   try {

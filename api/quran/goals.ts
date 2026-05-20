@@ -1,4 +1,4 @@
-import { authFromHeader, proxyUserApiFirstSuccess, quranUserApiBase, readJsonBody } from "../_lib/common";
+import { authFromHeader, proxyUserApiFirstSuccess, quranUserApiBase, readJsonBody } from "../../lib/api-common";
 
 export default async function handler(req: any, res: any) {
   try {

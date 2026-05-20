@@ -1,4 +1,4 @@
-import { authFromHeader, parseJsonSafe, quranUserApiBase, readJsonBody, userApiHeaders } from "../_lib/common";
+import { authFromHeader, parseJsonSafe, quranUserApiBase, readJsonBody, userApiHeaders } from "../../lib/api-common";
 
 export default async function handler(req: any, res: any) {
   try {
