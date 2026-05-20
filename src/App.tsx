@@ -2283,6 +2283,18 @@ export default function App() {
 
   // Handle Location
   useEffect(() => {
+    // Fail-safe: if location isn't found within 6 seconds, just use fallback and proceed
+    // This is critical for slow networks / desktop environments.
+    const forceEntryTimer = window.setTimeout(() => {
+      setLocationStatus(prev => {
+        if (prev === 'waiting') {
+          setCoords(DEFAULT_FALLBACK_COORDS);
+          return 'found';
+        }
+        return prev;
+      });
+    }, 6000);
+
     if ("geolocation" in navigator) {
       let didResolveLocation = false;
       const watchId = navigator.geolocation.watchPosition(
@@ -2315,9 +2327,13 @@ export default function App() {
         },
         { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
       );
-      return () => navigator.geolocation.clearWatch(watchId);
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+        window.clearTimeout(forceEntryTimer);
+      };
     } else {
       setLocationStatus('error');
+      window.clearTimeout(forceEntryTimer);
     }
   }, []);
 
