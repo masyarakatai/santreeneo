@@ -38,13 +38,14 @@ async function startServer() {
         return res.status(500).json({ error: "Missing QURAN_CLIENT_ID" });
       }
 
-      const protocol = process.env.VERCEL ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol);
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
-      
-      // Request only minimum mandatory scopes for 100% success rate
-      const scope = 'openid profile';
-      // Generate a stronger state (at least 16 chars) to satisfy security requirements
+
+      // Requesting ALL available scopes to demonstrate full integration potential
+      // Standard: openid profile email
+      // User Data: bookmarks activity reading_sessions goals notes reflections
+      const scope = 'openid profile email bookmarks activity reading_sessions goals notes reflections';
       const state = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
 
       const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${state}`;
@@ -155,12 +156,22 @@ async function startServer() {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+      
+      console.log("[API] Fetching bookmarks with token...");
       const resp = await fetch('https://api-prelive.quran.com/api/v4/auth/bookmarks', {
         headers: { 'Authorization': authHeader }
       });
-      res.json(await resp.json());
-    } catch (e) {
-      res.status(500).json({ error: 'Failed' });
+      
+      const data = await resp.json();
+      if (!resp.ok) {
+        console.error("[API] Bookmarks Provider Error:", data);
+        return res.status(resp.status).json(data);
+      }
+      
+      res.json(data);
+    } catch (e: any) {
+      console.error("[API] Bookmarks Exception:", e.message);
+      res.status(500).json({ error: 'Failed to fetch bookmarks', message: e.message });
     }
   });
 
