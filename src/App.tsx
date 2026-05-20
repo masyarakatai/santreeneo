@@ -47,7 +47,7 @@ const quranPublic = createPublicClient({
 
 // --- Components ---
 
-const LoginOverlay = ({ onGuestLogin }: { onGuestLogin: () => void }) => (
+const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void, onQuranLogin: () => void }) => (
   <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
@@ -64,6 +64,14 @@ const LoginOverlay = ({ onGuestLogin }: { onGuestLogin: () => void }) => (
       
       <div className="flex flex-col gap-3 w-full">
         <button 
+          onClick={onQuranLogin}
+          className="w-full bg-brand-neon text-on-surface font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
+        >
+          <img src="https://quran.com/images/logos/logo-quran.png" alt="Quran" className="w-6 h-6 invert" />
+          LOGIN WITH QURAN.COM
+        </button>
+
+        <button 
           onClick={() => {
             playSound('open');
             signInWithGoogle();
@@ -76,15 +84,14 @@ const LoginOverlay = ({ onGuestLogin }: { onGuestLogin: () => void }) => (
 
         <button 
           onClick={onGuestLogin}
-          className="w-full bg-surface text-on-surface font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed"
+          className="w-full bg-surface text-on-surface font-label-bold py-3 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed text-sm"
         >
-          <span className="material-symbols-outlined">person_outline</span>
           GUEST MODE (DEMO)
         </button>
       </div>
 
       <p className="text-[10px] text-on-surface-variant italic px-4">
-        Note: Guest mode data won't be saved to the cloud. Use Google Login for permanent progress.
+        Login with Quran.com to sync your streaks and bookmarks directly!
       </p>
     </motion.div>
   </div>
@@ -596,6 +603,12 @@ export default function App() {
       email: 'guest@ayahquest.com'
     });
   };
+
+  const handleQuranLogin = () => {
+    playSound('open');
+    // Redirect to backend OAuth initiator
+    window.location.href = '/api/auth/quran';
+  };
   const [coords, setCoords] = useState<[number, number]>([-6.2088, 106.8456]); 
   const [locationStatus, setLocationStatus] = useState<'waiting' | 'found' | 'error'>('waiting');
   const [xp, setXp] = useState(0);
@@ -633,6 +646,19 @@ export default function App() {
 
   // Handle Auth state
   useEffect(() => {
+    // Check for Quran.com login success in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('quran_login') === 'success') {
+      setUser({
+        uid: 'quran-user-123',
+        displayName: 'Quran Explorer',
+        email: 'user@quran.com',
+        isQuranAuth: true
+      });
+      // Clean up URL
+      window.history.replaceState({}, document.title, "/");
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setAuthLoading(false);
@@ -861,7 +887,7 @@ export default function App() {
   };
 
   if (authLoading) return <div className="h-screen w-screen bg-surface flex items-center justify-center text-on-surface font-headline-md font-bold uppercase animate-pulse">GUIDING YOUR PATH...</div>;
-  if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} />;
+  if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} onQuranLogin={handleQuranLogin} />;
 
   return (
     <div className="h-screen w-screen relative bg-surface overflow-hidden select-none touch-none bg-pattern">

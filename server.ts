@@ -22,6 +22,21 @@ async function startServer() {
     }
   });
 
+  app.get("/api/auth/quran", (req, res) => {
+    const clientId = process.env.QURAN_CLIENT_ID || 'b952392b-b89f-4b66-93a8-60e2dfb82ae4';
+    const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/quran/callback`;
+    const scope = 'openid profile email bookmarks activity';
+    const authUrl = `https://prelive-oauth2.quran.foundation/oauth2/auth?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+    res.redirect(authUrl);
+  });
+
+  app.get("/api/auth/quran/callback", async (req, res) => {
+    const { code } = req.query;
+    // In a real app, exchange code for token here. 
+    // For the hackathon demo, we'll redirect back with a success flag or mock user info.
+    res.redirect('/?quran_login=success');
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
