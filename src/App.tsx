@@ -1711,6 +1711,9 @@ export default function App() {
                   email: p.email || cachedQuranAuth.email,
                   photoURL: p.avatar || cachedQuranAuth.photoURL || '',
                 };
+                if (refreshedUser.displayName === 'Quran Explorer' && refreshedUser.email) {
+                  refreshedUser.displayName = String(refreshedUser.email).split('@')[0];
+                }
                 setUser(refreshedUser);
                 localStorage.setItem(QURAN_AUTH_STORAGE_KEY, JSON.stringify(refreshedUser));
               })
@@ -1737,7 +1740,7 @@ export default function App() {
         isQuranAuth: true,
         accessToken: accessToken
       };
-      if (idToken) {
+        if (idToken) {
         const claims = decodeJwtPayload(idToken);
         if (claims) {
           quranUser.uid = claims.sub ? `quran-user-${String(claims.sub)}` : quranUser.uid;
@@ -1767,6 +1770,9 @@ export default function App() {
         }
         setUser(quranUser);
         setAuthLoading(false); // Crucial: Stop loading and enter dashboard
+        if (quranUser.displayName === 'Quran Explorer' && quranUser.email && quranUser.email !== 'user@quran.com') {
+          quranUser.displayName = String(quranUser.email).split('@')[0];
+        }
         localStorage.setItem(QURAN_AUTH_STORAGE_KEY, JSON.stringify(quranUser));
       };
       bootstrapQuranUser();
@@ -2300,7 +2306,17 @@ export default function App() {
             'Authorization': `Bearer ${user.accessToken}`
           },
           body: JSON.stringify({ verse_key: selectedWaypoint.ayahKey })
-        }).catch(() => {});
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              setSyncStatus('failed');
+            } else {
+              setSyncStatus(syncQueue.length > 0 ? 'pending' : 'synced');
+            }
+          })
+          .catch(() => {
+            setSyncStatus('failed');
+          });
         fetch('/api/quran/activity', {
           method: 'POST',
           headers: { 

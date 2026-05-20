@@ -360,18 +360,53 @@ async function startServer() {
       const authHeader = req.headers.authorization;
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
-      const candidates = [
-        `${quranUserApiBase}/auth/v1/bookmarks`,
-        `${quranUserApiBase}/bookmarks/v1/bookmarks`,
+      const rawBody = req.body || {};
+      const verseKey = String(rawBody.verse_key || rawBody.verseKey || '').trim();
+      const [surahNoStr, ayahNoStr] = verseKey.split(':');
+      const surahNo = Number(surahNoStr);
+      const ayahNo = Number(ayahNoStr);
+      const normalizedBody =
+        Number.isFinite(surahNo) && Number.isFinite(ayahNo)
+          ? {
+              type: 'ayah',
+              key: surahNo,
+              verseNumber: ayahNo,
+              isReading: false,
+            }
+          : rawBody;
+
+      const attempts = [
+        { url: `${quranUserApiBase}/auth/v1/bookmarks`, body: normalizedBody },
+        { url: `${quranUserApiBase}/bookmarks/v1/bookmarks`, body: normalizedBody },
+        // Quran.com-style favorites/default collection path
+        { url: `${quranUserApiBase}/v1/collections/__default__/bookmarks`, body: normalizedBody },
       ];
-      const result = await proxyUserApiFirstSuccess({
-        accessToken,
-        candidates,
-        method: 'POST',
-        body: req.body,
-      });
-      if (!result.ok) return res.status(result.status).json(result.data);
-      return res.json(result.data);
+
+      let lastError: { status: number; data: any } | null = null;
+      let success: any = null;
+      for (const attempt of attempts) {
+        const resp = await fetch(attempt.url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': accessToken,
+            'x-client-id': process.env.QURAN_CLIENT_ID || '',
+          },
+          body: JSON.stringify(attempt.body),
+        });
+        const raw = await resp.text();
+        const data = parseJsonSafe(raw);
+        if (resp.ok) {
+          success = data;
+          break;
+        }
+        lastError = { status: resp.status, data };
+      }
+
+      if (!success) {
+        return res.status(lastError?.status || 422).json(lastError?.data || { error: 'Failed to save bookmark' });
+      }
+      return res.json(success);
     } catch (e: any) {
       return res.status(500).json({ error: 'Failed to save bookmark', message: e?.message || 'Unknown error' });
     }
