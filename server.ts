@@ -850,9 +850,26 @@ async function startServer() {
   return app;
 }
 
-const appPromise = startServer();
+const appPromise = startServer().catch((error: any) => {
+  console.error("[BOOTSTRAP_FAILED]", error?.stack || error?.message || error);
+  return null;
+});
 
 export default async (req: any, res: any) => {
-  const app = await appPromise;
-  return app(req, res);
+  try {
+    const app = await appPromise;
+    if (!app) {
+      return res.status(500).json({
+        error: "Server bootstrap failed",
+        message: "Application failed to initialize",
+      });
+    }
+    return app(req, res);
+  } catch (error: any) {
+    console.error("[REQUEST_HANDLER_FAILED]", error?.stack || error?.message || error);
+    return res.status(500).json({
+      error: "Request handler failed",
+      message: error?.message || "Unknown error",
+    });
+  }
 };
