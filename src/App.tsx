@@ -69,7 +69,13 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Authentication failed');
+      let msg = err.message || 'Authentication failed';
+      if (err.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password login is not enabled in Firebase Console.';
+      } else if (err.code === 'auth/unauthorized-domain') {
+        msg = 'This domain is not authorized in Firebase Console.';
+      }
+      setError(msg);
       playSound('error');
     } finally {
       setLoading(false);
@@ -134,6 +140,16 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
         </div>
         
         <div className="flex flex-col gap-2 w-full">
+          {window.location.hostname === 'localhost' && (
+            <button 
+              onClick={() => {
+                window.location.href = '/?quran_login=success&access_token=mock_token_for_dev';
+              }}
+              className="w-full bg-yellow-400 text-on-surface font-label-bold py-1.5 rounded-xl border-2 border-on-surface shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[9px] mb-1"
+            >
+              🛠️ DEV: MOCK QURAN LOGIN
+            </button>
+          )}
           <button 
             onClick={onQuranLogin}
             className="w-full bg-brand-neon text-on-surface font-label-bold py-2 rounded-xl flex items-center justify-center gap-2 neubrutalist-border hard-shadow neubrutalist-interaction transition-all text-xs"
@@ -271,7 +287,7 @@ const SmartRadar = ({
   const userIcon = new L.DivIcon({
     className: 'leaflet-div-icon',
     html: `
-      <div class="relative flex flex-col items-center marker-pulse z-50">
+      <div class="relative flex flex-col items-center z-50">
         <div class="w-14 h-14 bg-primary-container rounded-full neubrutalist-border flex items-center justify-center neubrutalism-shadow">
           <span class="text-3xl">👦🏻</span>
         </div>
@@ -361,9 +377,14 @@ const AyahModal = ({ waypoint, onCollect, onClose }: { waypoint: Waypoint & { is
       try {
         const cId = waypoint.ayahKey.split(':')[0];
         if (!cId) return;
-        const chap: any = await quranPublic.chapters.get(cId as any);
-        if (chap && chap.nameSimple) {
-          setChapterName(chap.nameSimple);
+        // Use the backend proxy instead of direct SDK call to avoid frontend restrictions
+        const res = await fetch(`/api/quran/chapter-info/${cId}`);
+        if (!res.ok) throw new Error('Failed to fetch from proxy');
+        const data = await res.json();
+        if (data && data.chapter && data.chapter.name_simple) {
+          setChapterName(data.chapter.name_simple);
+        } else if (data && data.name_simple) {
+           setChapterName(data.name_simple);
         }
       } catch(e) {
         console.warn("Failed to fetch chapter name", e);
@@ -654,6 +675,32 @@ const BottomNav = ({ active, onChange }: { active: string, onChange: (val: strin
       })}
       </div>
     </nav>
+  );
+};
+
+// Movement Simulator Component for local testing
+const MovementSimulator = ({ onMove }: { onMove: (lat: number, lng: number) => void }) => {
+  const step = 0.0001; // Approx 10 meters
+  return (
+    <div className="fixed left-6 bottom-32 z-[1000] flex flex-col gap-2">
+      <div className="flex justify-center">
+        <button onClick={() => onMove(step, 0)} className="w-10 h-10 bg-surface rounded-lg neubrutalist-border flex items-center justify-center neubrutalism-shadow active:translate-y-1">
+          <span className="material-symbols-outlined">expand_less</span>
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => onMove(0, -step)} className="w-10 h-10 bg-surface rounded-lg neubrutalist-border flex items-center justify-center neubrutalism-shadow active:translate-y-1">
+          <span className="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button onClick={() => onMove(-step, 0)} className="w-10 h-10 bg-surface rounded-lg neubrutalist-border flex items-center justify-center neubrutalism-shadow active:translate-y-1">
+          <span className="material-symbols-outlined">expand_more</span>
+        </button>
+        <button onClick={() => onMove(0, step)} className="w-10 h-10 bg-surface rounded-lg neubrutalist-border flex items-center justify-center neubrutalism-shadow active:translate-y-1">
+          <span className="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+      <div className="bg-surface p-1 rounded-md neubrutalist-border text-[8px] font-bold text-center uppercase">Sim Mode</div>
+    </div>
   );
 };
 
@@ -967,11 +1014,22 @@ export default function App() {
       }
 
       // SYNC WITH QURAN FOUNDATION USER API
-      fetch('/api/quran/activity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, activity: 'ayah_collected' })
-      }).then(() => console.log("Synced with Quran Foundation API"));
+      if (user.isQuranAuth && user.accessToken) {
+        fetch('/api/quran/activity', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.accessToken}`
+          },
+          body: JSON.stringify({ activity: 'ayah_collected', verse_key: selectedWaypoint.ayahKey })
+        }).then(() => console.log("Real sync with Quran Foundation API successful"));
+      } else {
+        fetch('/api/quran/activity', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid, activity: 'ayah_collected' })
+        }).then(() => console.log("Demo sync log recorded"));
+      }
 
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `profiles/${user.uid}`);
@@ -1029,6 +1087,11 @@ export default function App() {
   if (authLoading) return <div className="h-screen w-screen bg-surface flex items-center justify-center text-on-surface font-headline-md font-bold uppercase animate-pulse">GUIDING YOUR PATH...</div>;
   if (!user) return <LoginOverlay onGuestLogin={handleGuestLogin} onQuranLogin={handleQuranLogin} />;
 
+  const handleSimulatedMove = (dLat: number, dLng: number) => {
+    setCoords(prev => [prev[0] + dLat, prev[1] + dLng]);
+    setLocationStatus('found');
+  };
+
   return (
     <div className="h-screen w-screen relative bg-surface overflow-hidden select-none touch-none bg-pattern">
       <XPHeader xp={xp} rank={rank} streak={streak} />
@@ -1082,7 +1145,7 @@ export default function App() {
             collectedIds={collectedIds} 
             onWaypointClick={handleWaypointClick}
           />
-
+          <MovementSimulator onMove={handleSimulatedMove} />
         </>
       ) : activeTab === 'leaderboard' ? (
         <div className="absolute inset-0 z-10 flex flex-col p-6 pt-32 pb-32 overflow-y-auto bg-surface">
