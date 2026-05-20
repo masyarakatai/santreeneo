@@ -70,19 +70,23 @@ async function startServer() {
     }
 
     try {
-      const protocol = process.env.VERCEL ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol);
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['host'] || req.get('host');
       const redirectUri = `${protocol}://${host}/api/auth/quran/callback`;
 
+      // Use client_secret_basic authentication as required by the provider
+      const authHeader = 'Basic ' + Buffer.from(`${process.env.QURAN_CLIENT_ID}:${process.env.QURAN_CLIENT_SECRET}`).toString('base64');
+
       const tokenResponse = await fetch('https://prelive-oauth2.quran.foundation/oauth2/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: { 
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': authHeader
+        },
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code: code as string,
           redirect_uri: redirectUri,
-          client_id: process.env.QURAN_CLIENT_ID!,
-          client_secret: process.env.QURAN_CLIENT_SECRET!,
         }),
       });
 
