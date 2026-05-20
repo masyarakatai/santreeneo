@@ -643,7 +643,7 @@ async function startServer() {
 
       return res.json({ profile: null, source: 'unavailable' });
     } catch (e: any) {
-      return res.json({ profile: null, source: 'fallback', error: e?.message || 'Unknown error' });
+      return res.status(500).json({ error: 'Failed to fetch profile', message: e?.message || 'Unknown error' });
     }
   });
 
@@ -657,13 +657,10 @@ async function startServer() {
         `${quranUserApiBase}/goals/v1/goals`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) {
-        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
-        return res.json({ goals: [], degraded: true, provider: result.data });
-      }
+      if (!result.ok) return res.status(result.status).json(result.data);
       return res.json(result.data);
     } catch (e: any) {
-      return res.json({ goals: [], degraded: true, error: e?.message || 'Unknown error' });
+      return res.status(500).json({ error: 'Failed to fetch goals', message: e?.message || 'Unknown error' });
     }
   });
 
@@ -694,13 +691,10 @@ async function startServer() {
         `${quranUserApiBase}/notes/v1/notes`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) {
-        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
-        return res.json({ notes: [], degraded: true, provider: result.data });
-      }
+      if (!result.ok) return res.status(result.status).json(result.data);
       return res.json(result.data);
     } catch (e: any) {
-      return res.json({ notes: [], degraded: true, error: e?.message || 'Unknown error' });
+      return res.status(500).json({ error: 'Failed to fetch notes', message: e?.message || 'Unknown error' });
     }
   });
 
@@ -731,13 +725,10 @@ async function startServer() {
         `${quranUserApiBase}/collections/v1/collections`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) {
-        if (result.status === 401 || result.status === 403) return res.status(result.status).json(result.data);
-        return res.json({ collections: [], degraded: true, provider: result.data });
-      }
+      if (!result.ok) return res.status(result.status).json(result.data);
       return res.json(result.data);
     } catch (e: any) {
-      return res.json({ collections: [], degraded: true, error: e?.message || 'Unknown error' });
+      return res.status(500).json({ error: 'Failed to fetch collections', message: e?.message || 'Unknown error' });
     }
   });
 
