@@ -93,12 +93,33 @@ async function startServer() {
       }
 
       console.log("[AUTH] Token Exchange Success!");
-      // In a real production app, we would store this in a secure session/cookie.
-      // For the hackathon demo, we pass a success flag.
-      res.redirect('/?quran_login=success');
+      // We pass the access_token back to the client for demo purposes
+      // In a real app, this should be in a secure HttpOnly cookie.
+      res.redirect(`/?quran_login=success&access_token=${tokenData.access_token}`);
     } catch (error: any) {
       console.error("[AUTH] Callback Error:", error.message);
       res.redirect('/?quran_login=error');
+    }
+  });
+
+  // Proxy Quran User API: Fetch Bookmarks
+  app.get("/api/quran/bookmarks", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+
+      const resp = await fetch('https://api-prelive.quran.com/api/v4/auth/bookmarks', {
+        headers: {
+          'Authorization': authHeader
+        }
+      });
+
+      if (!resp.ok) throw new Error('Failed to fetch bookmarks');
+      const data = await resp.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Quran Bookmarks API Error:", error.message);
+      res.status(500).json({ error: 'Failed to fetch bookmarks' });
     }
   });
 

@@ -723,15 +723,34 @@ export default function App() {
   useEffect(() => {
     // Check for Quran.com login success in URL
     const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('access_token');
+    
     if (urlParams.get('quran_login') === 'success') {
-      setUser({
-        uid: 'quran-user-123',
+      const quranUser = {
+        uid: 'quran-user-' + Math.random().toString(36).substring(7),
         displayName: 'Quran Explorer',
         email: 'user@quran.com',
-        isQuranAuth: true
-      });
+        isQuranAuth: true,
+        accessToken: accessToken
+      };
+      setUser(quranUser);
       // Clean up URL
       window.history.replaceState({}, document.title, "/");
+
+      // Fetch Live Bookmarks if we have a token
+      if (accessToken) {
+        fetch('/api/quran/bookmarks', {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.bookmarks) {
+            const ayahKeys = data.bookmarks.map((b: any) => `${b.verse_key}`);
+            setCollectedIds(new Set(ayahKeys));
+          }
+        })
+        .catch(err => console.error("Failed to sync bookmarks", err));
+      }
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
