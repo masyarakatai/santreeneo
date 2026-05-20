@@ -383,82 +383,104 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
 
-      // Try multiple likely profile endpoints for compatibility.
+      // Try multiple likely profile endpoints and auth header styles for compatibility.
       const candidates = [
         `${quranUserApiBase}/auth/v1/me`,
         `${quranUserApiBase}/auth/v1/profile`,
         `${quranUserApiBase}/users/v1/me`,
+        `${quranUserApiBase}/user/v1/me`,
       ];
+      const headerVariants = [
+        {
+          'x-auth-token': accessToken,
+          'x-client-id': process.env.QURAN_CLIENT_ID || '',
+        },
+        {
+          Authorization: `Bearer ${accessToken}`,
+          'x-client-id': process.env.QURAN_CLIENT_ID || '',
+        },
+        {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      ] as Record<string, string>[];
 
       for (const url of candidates) {
-        const resp = await fetch(url, {
-          headers: {
-            'x-auth-token': accessToken,
-            'x-client-id': process.env.QURAN_CLIENT_ID || '',
-          },
-        });
-        const raw = await resp.text();
-        let data: any = null;
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          data = { raw };
-        }
-        if (!resp.ok) continue;
+        for (const headers of headerVariants) {
+          const resp = await fetch(url, { headers });
+          const raw = await resp.text();
+          let data: any = null;
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            data = { raw };
+          }
+          if (!resp.ok) continue;
 
-        const payload = data?.data || data?.user || data;
-        const profileNode = payload?.profile || payload?.attributes || payload;
-        const nameCandidate =
-          profileNode?.name ||
-          profileNode?.full_name ||
-          profileNode?.display_name ||
-          profileNode?.username ||
-          payload?.name ||
-          payload?.full_name ||
-          payload?.display_name ||
-          payload?.username ||
-          null;
-        const emailCandidate =
-          profileNode?.email ||
-          payload?.email ||
-          null;
-        const avatarCandidate =
-          profileNode?.avatar ||
-          profileNode?.avatar_url ||
-          profileNode?.image_url ||
-          profileNode?.profile_photo_url ||
-          payload?.avatar ||
-          payload?.avatar_url ||
-          payload?.image_url ||
-          payload?.profile_photo_url ||
-          null;
-        const profile = {
-          id: profileNode?.id || payload?.id || payload?.user_id || payload?.uuid || payload?.sub || null,
-          name: nameCandidate,
-          email: emailCandidate,
-          avatar: avatarCandidate,
-        };
-        return res.json({ profile, source: url });
+          const payload = data?.data || data?.user || data;
+          const profileNode = payload?.profile || payload?.attributes || payload;
+          const nameCandidate =
+            profileNode?.name ||
+            profileNode?.full_name ||
+            profileNode?.display_name ||
+            profileNode?.username ||
+            payload?.name ||
+            payload?.full_name ||
+            payload?.display_name ||
+            payload?.username ||
+            null;
+          const emailCandidate =
+            profileNode?.email ||
+            payload?.email ||
+            null;
+          const avatarCandidate =
+            profileNode?.avatar ||
+            profileNode?.avatar_url ||
+            profileNode?.image_url ||
+            profileNode?.profile_photo_url ||
+            payload?.avatar ||
+            payload?.avatar_url ||
+            payload?.image_url ||
+            payload?.profile_photo_url ||
+            null;
+          const profile = {
+            id: profileNode?.id || payload?.id || payload?.user_id || payload?.uuid || payload?.sub || null,
+            name: nameCandidate,
+            email: emailCandidate,
+            avatar: avatarCandidate,
+          };
+          if (profile.id || profile.name || profile.email || profile.avatar) {
+            return res.json({ profile, source: url });
+          }
+        }
       }
 
       // OIDC fallback via userinfo endpoint
       try {
-        const userInfoResp = await fetch(`${oauthBaseUrl}/oauth2/userinfo`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        const raw = await userInfoResp.text();
-        const data = parseJsonSafe(raw);
-        if (userInfoResp.ok) {
-          const payload = data?.data || data?.user || data;
-          const profile = {
-            id: payload?.sub || payload?.id || null,
-            name: payload?.name || payload?.preferred_username || null,
-            email: payload?.email || null,
-            avatar: payload?.picture || payload?.avatar || null,
-          };
-          return res.json({ profile, source: `${oauthBaseUrl}/oauth2/userinfo` });
+        const authHostFallback = oauthBaseUrl.replace('oauth2.', 'auth.');
+        const userInfoCandidates = [
+          `${oauthBaseUrl}/oauth2/userinfo`,
+          `${authHostFallback}/oauth2/userinfo`,
+        ];
+        for (const userinfoUrl of userInfoCandidates) {
+          const userInfoResp = await fetch(userinfoUrl, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          });
+          const raw = await userInfoResp.text();
+          const data = parseJsonSafe(raw);
+          if (userInfoResp.ok) {
+            const payload = data?.data || data?.user || data;
+            const profile = {
+              id: payload?.sub || payload?.id || null,
+              name: payload?.name || payload?.preferred_username || null,
+              email: payload?.email || null,
+              avatar: payload?.picture || payload?.avatar || null,
+            };
+            if (profile.id || profile.name || profile.email || profile.avatar) {
+              return res.json({ profile, source: userinfoUrl });
+            }
+          }
         }
       } catch {
         // continue to final fallback response
