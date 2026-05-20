@@ -1666,6 +1666,26 @@ export default function App() {
         if (cachedQuranAuth?.accessToken && cachedQuranAuth?.uid) {
           setUser(cachedQuranAuth);
           setAuthLoading(false);
+          if (cachedQuranAuth.isQuranAuth && cachedQuranAuth.accessToken !== 'mock_token_for_dev') {
+            fetch('/api/quran/me', {
+              headers: { Authorization: `Bearer ${cachedQuranAuth.accessToken}` }
+            })
+              .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+              .then(({ ok, data }) => {
+                if (!ok || !data?.profile) return;
+                const p = data.profile;
+                const refreshedUser = {
+                  ...cachedQuranAuth,
+                  uid: p.id ? `quran-user-${String(p.id)}` : cachedQuranAuth.uid,
+                  displayName: p.name || (p.email ? String(p.email).split('@')[0] : cachedQuranAuth.displayName),
+                  email: p.email || cachedQuranAuth.email,
+                  photoURL: p.avatar || cachedQuranAuth.photoURL || '',
+                };
+                setUser(refreshedUser);
+                localStorage.setItem(QURAN_AUTH_STORAGE_KEY, JSON.stringify(refreshedUser));
+              })
+              .catch(() => {});
+          }
         }
       } catch (_) {
         localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
