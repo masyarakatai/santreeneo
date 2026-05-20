@@ -25,5 +25,8 @@ We integrate with:
 ## 5. Your Rights
 You can request the deletion of your account data at any time by contacting us through our official GitHub repository.
 
-## 6. Policy Changes
+## 6. Contact Us
+If you have any questions or concerns about this Privacy Policy, please contact us at **santreedigitalid@gmail.com**.
+
+## 7. Policy Changes
 We may update this policy periodically to reflect changes in our app features or legal requirements.
