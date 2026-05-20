@@ -25,6 +25,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Leaderboard: Public read-only for hackathon demo
+    match /leaderboard/{entryId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Profiles: Public read/write for hackathon demo to support hybrid auth
     match /profiles/{userId} {
       allow read, write: if true;

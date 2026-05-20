@@ -29,6 +29,7 @@ async function startServer() {
       oauth2BaseUrl: "https://prelive-oauth2.quran.foundation"
     }
   });
+  const quranUserApiBase = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
 
   // Auth Initiation
   app.get("/api/auth/quran", (req, res) => {
@@ -138,9 +139,14 @@ async function startServer() {
     try {
       const authHeader = req.headers.authorization;
       if (authHeader) {
-        const resp = await fetch('https://api-prelive.quran.com/api/v4/auth/activity', {
+        const accessToken = authHeader.replace(/^Bearer\s+/i, '');
+        const resp = await fetch(`${quranUserApiBase}/auth/v1/activity`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': accessToken,
+            'x-client-id': process.env.QURAN_CLIENT_ID || '',
+          },
           body: JSON.stringify(req.body)
         });
         if (resp.ok) return res.json(await resp.json());
@@ -155,13 +161,23 @@ async function startServer() {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+      const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       
       console.log("[API] Fetching bookmarks with token...");
-      const resp = await fetch('https://api-prelive.quran.com/api/v4/auth/bookmarks', {
-        headers: { 'Authorization': authHeader }
+      const resp = await fetch(`${quranUserApiBase}/auth/v1/bookmarks`, {
+        headers: {
+          'x-auth-token': accessToken,
+          'x-client-id': process.env.QURAN_CLIENT_ID || '',
+        }
       });
       
-      const data = await resp.json();
+      const raw = await resp.text();
+      let data: any;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        data = { raw };
+      }
       if (!resp.ok) {
         console.error("[API] Bookmarks Provider Error:", data);
         return res.status(resp.status).json(data);

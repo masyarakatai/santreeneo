@@ -622,6 +622,7 @@ const MovementSimulator = ({ onMove }: { onMove: (lat: number, lng: number) => v
 };
 
 export default function App() {
+  const QURAN_AUTH_STORAGE_KEY = 'santree_quran_auth';
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -638,6 +639,19 @@ export default function App() {
 
   const handleQuranLogin = () => {
     playSound('open');
+    const cachedQuranAuthRaw = localStorage.getItem(QURAN_AUTH_STORAGE_KEY);
+    if (cachedQuranAuthRaw) {
+      try {
+        const cachedQuranAuth = JSON.parse(cachedQuranAuthRaw);
+        if (cachedQuranAuth?.accessToken && cachedQuranAuth?.uid) {
+          setUser(cachedQuranAuth);
+          setAuthLoading(false);
+          return;
+        }
+      } catch (_) {
+        localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
+      }
+    }
     // Redirect to real backend OAuth initiator
     window.location.href = '/api/auth/quran';
   };
@@ -685,6 +699,19 @@ export default function App() {
 
   // Handle Auth state
   useEffect(() => {
+    const cachedQuranAuthRaw = localStorage.getItem(QURAN_AUTH_STORAGE_KEY);
+    if (cachedQuranAuthRaw) {
+      try {
+        const cachedQuranAuth = JSON.parse(cachedQuranAuthRaw);
+        if (cachedQuranAuth?.accessToken && cachedQuranAuth?.uid) {
+          setUser(cachedQuranAuth);
+          setAuthLoading(false);
+        }
+      } catch (_) {
+        localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
+      }
+    }
+
     // Check for Quran.com login success in URL
     const urlParams = new URLSearchParams(window.location.search);
     const accessToken = urlParams.get('access_token');
@@ -699,6 +726,7 @@ export default function App() {
       };
       setUser(quranUser);
       setAuthLoading(false); // Crucial: Stop loading and enter dashboard
+      localStorage.setItem(QURAN_AUTH_STORAGE_KEY, JSON.stringify(quranUser));
       
       // Load/Create Game Profile in Firebase based on Quran.com ID
       const syncProfile = async () => {
@@ -741,6 +769,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser(u);
+        localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
         const profileRef = doc(db, 'profiles', u.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
