@@ -326,7 +326,8 @@ async function startServer() {
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       
       console.log("[API] Fetching bookmarks with token...");
-      const resp = await fetch(`${quranUserApiBase}/auth/v1/bookmarks`, {
+      const mushafId = Number(req.query.mushafId || 4);
+      const resp = await fetch(`${quranUserApiBase}/auth/v1/bookmarks?mushafId=${encodeURIComponent(String(mushafId))}&type=ayah&first=20`, {
         headers: {
           'x-auth-token': accessToken,
           'x-client-id': process.env.QURAN_CLIENT_ID || '',
@@ -372,6 +373,8 @@ async function startServer() {
               key: surahNo,
               verseNumber: ayahNo,
               isReading: false,
+              mushafId: 4,
+              mushaf: 4,
             }
           : rawBody;
 
@@ -379,6 +382,7 @@ async function startServer() {
         { url: `${quranUserApiBase}/auth/v1/bookmarks`, body: normalizedBody },
         { url: `${quranUserApiBase}/bookmarks/v1/bookmarks`, body: normalizedBody },
         // Quran.com-style favorites/default collection path
+        { url: `${quranUserApiBase}/auth/v1/collections/__default__/bookmarks`, body: normalizedBody },
         { url: `${quranUserApiBase}/v1/collections/__default__/bookmarks`, body: normalizedBody },
       ];
 
