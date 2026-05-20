@@ -60,7 +60,46 @@ async function startServer() {
   app.get("/api/auth/quran/callback", async (req, res) => {
     const { code } = req.query;
     console.log("[AUTH] Callback received with code:", code);
-    res.redirect('/?quran_login=success');
+
+    if (!code) {
+      return res.redirect('/?quran_login=error&message=No+code+provided');
+    }
+
+    try {
+      const clientId = process.env.QURAN_CLIENT_ID;
+      const clientSecret = process.env.QURAN_CLIENT_SECRET;
+      const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/quran/callback`;
+
+      // Exchange code for token
+      const tokenResponse = await fetch('https://prelive-oauth2.quran.foundation/oauth2/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code as string,
+          redirect_uri: redirectUri,
+          client_id: clientId as string,
+          client_secret: clientSecret as string,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenResponse.ok) {
+        console.error("[AUTH] Token Exchange Failed:", tokenData);
+        return res.redirect(`/?quran_login=error&message=${encodeURIComponent(tokenData.error_description || 'Token exchange failed')}`);
+      }
+
+      console.log("[AUTH] Token Exchange Success!");
+      // In a real production app, we would store this in a secure session/cookie.
+      // For the hackathon demo, we pass a success flag.
+      res.redirect('/?quran_login=success');
+    } catch (error: any) {
+      console.error("[AUTH] Callback Error:", error.message);
+      res.redirect('/?quran_login=error');
+    }
   });
 
   if (process.env.NODE_ENV !== "production") {
