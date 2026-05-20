@@ -342,6 +342,9 @@ async function startServer() {
       }
       if (!resp.ok) {
         console.error("[API] Bookmarks Provider Error:", data);
+        if (resp.status === 404 || resp.status === 422) {
+          return res.json({ bookmarks: [], source: 'fallback_empty', provider_status: resp.status });
+        }
         return res.status(resp.status).json(data);
       }
       
@@ -461,7 +464,7 @@ async function startServer() {
         // continue to final fallback response
       }
 
-      return res.status(404).json({ error: 'Profile endpoint not found or unavailable' });
+      return res.json({ profile: null, source: 'unavailable' });
     } catch (e: any) {
       return res.status(500).json({ error: 'Failed to fetch profile', message: e?.message || 'Unknown error' });
     }
@@ -477,7 +480,12 @@ async function startServer() {
         `${quranUserApiBase}/goals/v1/goals`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 404 || result.status === 422) {
+          return res.json({ goals: [], source: 'fallback_empty', provider_status: result.status });
+        }
+        return res.status(result.status).json(result.data);
+      }
       return res.json(result.data);
     } catch (e: any) {
       return res.status(500).json({ error: 'Failed to fetch goals', message: e?.message || 'Unknown error' });
@@ -511,7 +519,12 @@ async function startServer() {
         `${quranUserApiBase}/notes/v1/notes`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 404 || result.status === 422) {
+          return res.json({ notes: [], source: 'fallback_empty', provider_status: result.status });
+        }
+        return res.status(result.status).json(result.data);
+      }
       return res.json(result.data);
     } catch (e: any) {
       return res.status(500).json({ error: 'Failed to fetch notes', message: e?.message || 'Unknown error' });
@@ -545,7 +558,12 @@ async function startServer() {
         `${quranUserApiBase}/collections/v1/collections`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
-      if (!result.ok) return res.status(result.status).json(result.data);
+      if (!result.ok) {
+        if (result.status === 404 || result.status === 422) {
+          return res.json({ collections: [], source: 'fallback_empty', provider_status: result.status });
+        }
+        return res.status(result.status).json(result.data);
+      }
       return res.json(result.data);
     } catch (e: any) {
       return res.status(500).json({ error: 'Failed to fetch collections', message: e?.message || 'Unknown error' });
