@@ -161,7 +161,9 @@ async function startServer() {
       }
 
       console.log("[AUTH] Token Exchange Success!");
-      const successUrl = `/?quran_login=success#access_token=${encodeURIComponent(tokenData.access_token)}`;
+      const hashParts = [`access_token=${encodeURIComponent(tokenData.access_token)}`];
+      if (tokenData.id_token) hashParts.push(`id_token=${encodeURIComponent(tokenData.id_token)}`);
+      const successUrl = `/?quran_login=success#${hashParts.join('&')}`;
       res.redirect(successUrl);
     } catch (e: any) {
       console.error("[AUTH] Callback Exception:", e.message);
@@ -387,6 +389,29 @@ async function startServer() {
           avatar: payload?.avatar || payload?.avatar_url || payload?.image_url || null,
         };
         return res.json({ profile, source: url });
+      }
+
+      // OIDC fallback via userinfo endpoint
+      try {
+        const userInfoResp = await fetch(`${oauthBaseUrl}/oauth2/userinfo`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        const raw = await userInfoResp.text();
+        const data = parseJsonSafe(raw);
+        if (userInfoResp.ok) {
+          const payload = data?.data || data?.user || data;
+          const profile = {
+            id: payload?.sub || payload?.id || null,
+            name: payload?.name || payload?.preferred_username || null,
+            email: payload?.email || null,
+            avatar: payload?.picture || payload?.avatar || null,
+          };
+          return res.json({ profile, source: `${oauthBaseUrl}/oauth2/userinfo` });
+        }
+      } catch {
+        // continue to final fallback response
       }
 
       return res.status(404).json({ error: 'Profile endpoint not found or unavailable' });

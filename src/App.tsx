@@ -37,6 +37,18 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function decodeJwtPayload(token: string): any | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
 const quranPublic = createPublicClient({
   clientId: import.meta.env.VITE_QURAN_CLIENT_ID || 'b952392b-b89f-4b66-93a8-60e2dfb82ae4',
   clientType: 'public',
@@ -1664,6 +1676,7 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const accessToken = hashParams.get('access_token');
+    const idToken = hashParams.get('id_token');
     
     if (urlParams.get('quran_login') === 'success') {
       const quranUser: any = {
@@ -1674,6 +1687,15 @@ export default function App() {
         isQuranAuth: true,
         accessToken: accessToken
       };
+      if (idToken) {
+        const claims = decodeJwtPayload(idToken);
+        if (claims) {
+          quranUser.uid = claims.sub ? `quran-user-${String(claims.sub)}` : quranUser.uid;
+          quranUser.displayName = claims.name || claims.preferred_username || quranUser.displayName;
+          quranUser.email = claims.email || quranUser.email;
+          quranUser.photoURL = claims.picture || '';
+        }
+      }
       const bootstrapQuranUser = async () => {
         // Try to enrich with real Quran.com profile
         if (accessToken && accessToken !== 'mock_token_for_dev') {
