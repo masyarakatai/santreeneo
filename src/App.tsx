@@ -1479,8 +1479,8 @@ const MovementSimulator = ({ onMove }: { onMove: (lat: number, lng: number) => v
 };
 
 export default function App() {
-  const DEFAULT_RESPAWN_MS = 24 * 60 * 60 * 1000;
-  const NEAR_RESPAWN_MS = 2 * 60 * 60 * 1000;
+  const DEFAULT_RESPAWN_MS = 5 * 60 * 1000;
+  const NEAR_RESPAWN_MS = 60 * 1000;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appLang, setAppLang] = useState<AppLang>(() => (localStorage.getItem(APP_LANG_KEY) as AppLang) || 'id');
@@ -1944,14 +1944,14 @@ export default function App() {
       if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Teks bahasa Arab tidak tersedia")) {
         // Generate random points with varying distances
         const newWaypoints: Waypoint[] = [];
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < 60; i++) {
           // Angle in radians
           const angle = Math.random() * Math.PI * 2;
           // Distance in meters:
           // near: 5-30m (gold, 20%), active: 30m-600m (green, 50%), locked: 600m-3km (gray, 30%)
           const distanceMeters =
-            i < 5 ? (5 + Math.random() * 25) :
-            i < 18 ? (30 + Math.random() * 570) :
+            i < 18 ? (5 + Math.random() * 45) :
+            i < 45 ? (30 + Math.random() * 570) :
             (600 + Math.random() * 2400);
           // Approximate meters to degrees
           const rLat = distanceMeters / 111320;
@@ -2104,11 +2104,11 @@ export default function App() {
     if (!user || locationStatus !== 'found') return;
     if (isTopUpRunningRef.current) return;
     const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
-    const minActiveTarget = 10;
+      const minActiveTarget = 24;
     if (activeCount >= minActiveTarget) return;
     isTopUpRunningRef.current = true;
     try {
-      const toCreate = Math.min(4, minActiveTarget - activeCount);
+      const toCreate = Math.min(8, minActiveTarget - activeCount);
       const created = await Promise.all(
         Array.from({ length: toCreate }, () => generateDynamicWaypoint(coords))
       );
@@ -2127,7 +2127,7 @@ export default function App() {
     topUpWaypoints().catch(() => {});
     const timer = window.setInterval(() => {
       topUpWaypoints().catch(() => {});
-    }, 20000);
+    }, 12000);
     return () => window.clearInterval(timer);
   }, [user, locationStatus, topUpWaypoints]);
   const formatCountdown = (ms: number) => {
@@ -2266,7 +2266,10 @@ export default function App() {
     const collectedAt = Date.now();
     const newCollectedAtMap = { ...collectedAtMap, [selectedWaypoint.ayahKey]: collectedAt };
     setCollectedAtMap(newCollectedAtMap);
-    const perWaypointCooldown = (selectedWaypoint.distance || Infinity) <= nearRange ? NEAR_RESPAWN_MS : DEFAULT_RESPAWN_MS;
+    const randomizedCooldown = (selectedWaypoint.distance || Infinity) <= nearRange
+      ? NEAR_RESPAWN_MS + Math.floor(Math.random() * (2 * 60 * 1000))
+      : (60 * 1000) + Math.floor(Math.random() * (4 * 60 * 1000));
+    const perWaypointCooldown = randomizedCooldown;
     const newCollectedCooldownMap = { ...collectedCooldownMap, [selectedWaypoint.ayahKey]: perWaypointCooldown };
     setCollectedCooldownMap(newCollectedCooldownMap);
 
