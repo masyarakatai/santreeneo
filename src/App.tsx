@@ -78,6 +78,16 @@ const PROFILE_STYLE_AVATAR: Record<string, string> = {
 };
 const verseInsightCache = new Map<string, string | null>();
 
+const getDistanceMeters = (from: [number, number], to: [number, number]) => {
+  const R = 6371e3;
+  const f1 = from[0] * Math.PI / 180;
+  const f2 = to[0] * Math.PI / 180;
+  const df = (to[0] - from[0]) * Math.PI / 180;
+  const dl = (to[1] - from[1]) * Math.PI / 180;
+  const a = Math.sin(df / 2) * Math.sin(df / 2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 type QuranGoal = { id: string; title: string; target: number; progress: number };
 type QuranNote = { id: string; verseKey: string; content: string };
 type QuranCollection = { id: string; name: string; count?: number };
@@ -106,6 +116,9 @@ const UI_TEXT: Record<string, string> = {
   logout: 'LOG OUT',
   synced: 'Synced with Quran.com Bookmarks',
   claimReward: 'CLAIM REWARD',
+  listenAndConnect: 'LISTEN & CONNECT',
+  reciting: 'RECITING...',
+  listenMandatory: 'Listen to full recitation to claim reward',
   loginSubtitle: 'Unlock your Quranic potential. We use Quran.com to sync your progress, bookmarks, and streaks.',
   locationErrorTitle: 'Location Not Found',
   locationErrorBody: 'Ensure GPS permission is enabled in your browser. If you are in AI Studio preview, open the app in a new tab.',
@@ -341,15 +354,6 @@ const SmartRadar = ({
   lockRange: number,
   lockMaxRange: number
 }) => {
-  const getDistanceMeters = (from: [number, number], to: [number, number]) => {
-    const R = 6371e3;
-    const f1 = from[0] * Math.PI / 180;
-    const f2 = to[0] * Math.PI / 180;
-    const df = (to[0] - from[0]) * Math.PI / 180;
-    const dl = (to[1] - from[1]) * Math.PI / 180;
-    const a = Math.sin(df / 2) * Math.sin(df / 2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dl / 2) * Math.sin(dl / 2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
   const offsetFrom = (origin: [number, number], angleRad: number, meters: number): [number, number] => {
     const dLat = (meters * Math.sin(angleRad)) / 111320;
     const dLng = (meters * Math.cos(angleRad)) / (111320 * Math.cos((origin[0] * Math.PI) / 180));
@@ -624,7 +628,12 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      audioRef.current.play()
+        .then(() => {
+          setIsPlaying(true);
+          setAutoPlayBlocked(false);
+        })
+        .catch(() => setAutoPlayBlocked(true));
     }
   };
   const formatPlaybackTime = (seconds: number) => {
@@ -677,7 +686,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
     (gameMode !== 'arrange' && !!quizCorrect && quizSelected === quizCorrect);
   const playbackCompleted = !audioRef.current || audioDuration === 0 || audioCurrentTime >= Math.max(0, audioDuration - 0.25);
   const hasPlayableAudio = !!waypoint.audioUrl;
-  const canClaimReward = playbackCompleted || autoPlayBlocked || !hasPlayableAudio;
+  const canClaimReward = playbackCompleted || !hasPlayableAudio;
   const cleanArabicText = getCleanArabicText();
   const isLongAyah = cleanArabicText.length > 180 || cleanArabicText.split(/\s+/).length > 24;
   const activeTranslation = insightData?.translation || waypoint.translation || 'Translation unavailable.';
@@ -1154,15 +1163,6 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
                 </span>
               </button>
 	            </div>
-              {autoPlayBlocked && (
-                <button
-                  onClick={toggleAudio}
-                  className="mt-1 w-full bg-primary text-on-primary border-2 border-on-surface rounded-lg py-2 text-xs font-label-bold uppercase hard-shadow flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-base">play_arrow</span>
-                  Tap to play recitation
-                </button>
-              )}
 	            <div className="mt-1">
                 <div className="h-2 w-full bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
                   <div
@@ -1180,23 +1180,32 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
 
           <div className={cn("shrink-0 px-4 pt-2 pb-4 border-t-2 border-on-surface/20", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
 	          <button 
-	            onClick={handleClaimAndClose}
-                disabled={!canClaimReward}
+	            onClick={canClaimReward ? handleClaimAndClose : toggleAudio}
 	            className={cn(
-                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-3 px-3 font-headline-md font-bold uppercase tracking-wide transition-all mt-1.5 flex items-center justify-center gap-2 group relative overflow-hidden",
-                  canClaimReward ? "hover:translate-x-1 hover:translate-y-1 cursor-pointer reward-glow-sweep" : "opacity-55 cursor-not-allowed"
+                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-4 px-3 font-headline-md font-bold uppercase tracking-widest transition-all mt-1.5 flex items-center justify-center gap-3 group relative overflow-hidden",
+                  "hover:translate-x-0.5 hover:translate-y-0.5 cursor-pointer active:translate-x-1 active:translate-y-1 active:shadow-none",
+                  canClaimReward && "reward-glow-sweep"
                 )}
 	            style={{
-	              background: 'linear-gradient(180deg, #FFF3B0 0%, #FFD54F 45%, #F6B10A 100%)',
-	              boxShadow: '0 0 0 2px rgba(255, 214, 102, 0.75), 0 0 22px 5px rgba(255, 193, 7, 0.55), 6px 6px 0px 0px #181d17'
+	              background: canClaimReward 
+                    ? 'linear-gradient(180deg, #FFF3B0 0%, #FFD54F 45%, #F6B10A 100%)' 
+                    : (isPlaying ? '#f6fbf0' : '#D4FF00'),
+	              boxShadow: canClaimReward 
+                    ? '0 0 0 2px rgba(255, 214, 102, 0.75), 0 0 22px 5px rgba(255, 193, 7, 0.55), 6px 6px 0px 0px #181d17' 
+                    : '6px 6px 0px 0px #181d17'
 	            }}
 	          >
-	            {t.claimReward}
-	            <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">star</span>
+                <span className={cn("material-symbols-outlined text-2xl transition-transform", isPlaying && "animate-pulse")}>
+                  {canClaimReward ? 'auto_awesome' : (isPlaying ? 'graphic_eq' : 'play_circle')}
+                </span>
+	            <span className="text-sm">
+                  {canClaimReward ? t.claimReward : (isPlaying ? t.reciting : t.listenAndConnect)}
+                </span>
+                {canClaimReward && <span className="material-symbols-outlined text-xl group-hover:rotate-12 transition-transform">star</span>}
 	          </button>
-              {!canClaimReward && (
-                <p className="text-[10px] font-label-bold text-on-surface text-center -mt-3">
-                  'Wait until audio finishes to claim reward.'
+              {!canClaimReward && !isPlaying && (
+                <p className="text-[9px] font-label-bold text-on-surface/60 text-center mt-2 uppercase tracking-tighter">
+                  {t.listenMandatory}
                 </p>
               )}
           </div>
@@ -2120,6 +2129,7 @@ export default function App() {
                ayahKey: "2:255",
                arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
                translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
+               audioUrl: "https://audio.qurancdn.com/Alafasy/mp3/002255.mp3",
                points: 25
              } as any;
           }
@@ -2214,8 +2224,12 @@ export default function App() {
   }, [collectedIds, collectedAtMap, collectedCooldownMap, nowTs]);
 
   const availableWaypointCount = useMemo(
-    () => waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length,
-    [waypoints, activeCollectedIds]
+    () => waypoints.filter((wp) => {
+      const isCollected = activeCollectedIds.has(wp.ayahKey);
+      const dist = getDistanceMeters(coords, [wp.lat, wp.lng]);
+      return !isCollected && dist <= lockMaxRange;
+    }).length,
+    [waypoints, activeCollectedIds, coords, lockMaxRange]
   );
   const nextRespawnMs = useMemo(() => {
     let minRemaining = Number.POSITIVE_INFINITY;
@@ -2233,11 +2247,11 @@ export default function App() {
     if (!user || locationStatus !== 'found') return;
     if (isTopUpRunningRef.current) return;
     const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
-      const minActiveGoal = 24;
+      const minActiveGoal = 40;
     if (activeCount >= minActiveGoal) return;
     isTopUpRunningRef.current = true;
     try {
-      const toCreate = Math.min(8, minActiveGoal - activeCount);
+      const toCreate = Math.min(12, minActiveGoal - activeCount);
       const created = await Promise.all(
         Array.from({ length: toCreate }, () => generateDynamicWaypoint(coords))
       );
@@ -2256,7 +2270,7 @@ export default function App() {
     topUpWaypoints().catch(() => {});
     const timer = window.setInterval(() => {
       topUpWaypoints().catch(() => {});
-    }, 12000);
+    }, 8000);
     return () => window.clearInterval(timer);
   }, [user, locationStatus, topUpWaypoints]);
   const formatCountdown = (ms: number) => {
@@ -2674,7 +2688,7 @@ export default function App() {
           <div>
             <h3 className="text-on-error-container font-headline-md font-bold text-sm tracking-tight mb-1">{t.locationErrorTitle}</h3>
             <p className="text-on-error-container/80 text-xs mb-2">{t.locationErrorBody}</p>
-            <button 
+            <button
               onClick={() => {
                 setLocationStatus('waiting');
                 if ("geolocation" in navigator) {
@@ -2683,16 +2697,18 @@ export default function App() {
                       setCoords([pos.coords.latitude, pos.coords.longitude]);
                       setLocationStatus('found');
                     },
-                    () => setLocationStatus('error'),
-                    { enableHighAccuracy: true }
+                    () => {
+                      setCoords(DEFAULT_FALLBACK_COORDS);
+                      setLocationStatus('found');
+                    },
+                    { enableHighAccuracy: false, timeout: 8000 }
                   );
                 }
               }}
               className="bg-surface text-on-surface text-xs font-label-bold uppercase tracking-wider px-3 py-1.5 rounded-full neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
             >
               {t.retry}
-            </button>
-            <div className="mt-3 p-3 bg-surface-container rounded-xl border-2 border-on-surface">
+            </button>            <div className="mt-3 p-3 bg-surface-container rounded-xl border-2 border-on-surface">
               <p className="text-[10px] font-label-bold uppercase tracking-wider mb-2">{t.manualLocation}</p>
               <p className="text-[11px] text-on-surface mb-2">{t.manualLocationHint}</p>
               <div className="flex gap-2">
