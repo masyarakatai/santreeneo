@@ -1,7 +1,10 @@
+import * as dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { createServerClient } from "@quranjs/api/server";
+
+dotenv.config();
 
 async function startServer() {
   const app = express();
