@@ -1,8 +1,8 @@
-# Privacy Policy for AyahQuest
+# Privacy Policy for Santree Go
 
 **Effective Date:** May 20, 2026
 
-At AyahQuest, we prioritize your privacy and the security of your data.
+At Santree Go, we prioritize your privacy and the security of your data.
 
 ## 1. Information We Collect
 * **Geolocation Data:** We access your GPS coordinates to display nearby Quranic verses. This data stays within the application's runtime and is not uploaded to our permanent storage unless explicitly required for a game mechanic (e.g., Mosque Hub identification).

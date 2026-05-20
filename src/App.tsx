@@ -58,7 +58,7 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void
         🧭
       </div>
       <div>
-        <h1 className="text-4xl font-headline-md font-bold text-on-surface uppercase mb-2 text-center">AyahQuest</h1>
+        <h1 className="text-4xl font-headline-md font-bold text-on-surface uppercase mb-2 text-center">Santree Go</h1>
         <p className="text-on-surface-variant font-label-bold uppercase tracking-widest text-[10px] text-center">A Journey to Enlightenment</p>
       </div>
       
@@ -900,12 +900,12 @@ export default function App() {
           <span className="material-symbols-outlined">arrow_back</span> BACK
         </button>
         <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
-          <h1 className="text-3xl font-bold mb-6">Terms and Conditions</h1>
+          <h1 className="text-3xl font-bold mb-6">Santree Go - Terms and Conditions</h1>
           <p><strong>Effective Date:</strong> May 20, 2026</p>
           <h2 className="text-xl font-bold mt-6 mb-2">1. Description of Service</h2>
-          <p>AyahQuest is an educational platform designed to encourage Quranic engagement through location-based discovery.</p>
+          <p>Santree Go is an educational platform designed to encourage Quranic engagement through location-based discovery.</p>
           <h2 className="text-xl font-bold mt-6 mb-2">2. Use of Geolocation</h2>
-          <p>AyahQuest requires access to your device's GPS location to function correctly. This data is used solely to "spawn" Quranic verses in your vicinity.</p>
+          <p>Santree Go requires access to your device's GPS location to function correctly. This data is used solely to "spawn" Quranic verses in your vicinity.</p>
           <h2 className="text-xl font-bold mt-6 mb-2">3. Quranic Content</h2>
           <p>All Quranic text, translations, and audio are provided via the Quran Foundation API.</p>
           <h2 className="text-xl font-bold mt-6 mb-2">4. User Accounts</h2>
@@ -924,10 +924,10 @@ export default function App() {
           <span className="material-symbols-outlined">arrow_back</span> BACK
         </button>
         <div className="max-w-2xl mx-auto bg-surface-container p-8 rounded-2xl neubrutalist-border shadow-md">
-          <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
+          <h1 className="text-3xl font-bold mb-6">Santree Go - Privacy Policy</h1>
           <p><strong>Effective Date:</strong> May 20, 2026</p>
           <h2 className="text-xl font-bold mt-6 mb-2">1. Information We Collect</h2>
-          <p>We access your GPS coordinates to display nearby Quranic verses. We collect basic profile info when you log in.</p>
+          <p>At Santree Go, we access your GPS coordinates to display nearby Quranic verses. We collect basic profile info when you log in.</p>
           <h2 className="text-xl font-bold mt-6 mb-2">2. How We Use Data</h2>
           <p>To personalize your Quranic discovery experience and maintain your streaks.</p>
           <h2 className="text-xl font-bold mt-6 mb-2">3. Data Storage</h2>
