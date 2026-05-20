@@ -19,16 +19,15 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Waypoints: Read-only for authenticated users
+    // Waypoints: Public read-only for hackathon map
     match /waypoints/{waypointId} {
-      allow get, list: if isSignedIn();
-      allow write: if false; // Only manageable via Admin SDK/Console
+      allow read: if true;
+      allow write: if false;
     }
 
-    // Profiles: Users manage their own progress
+    // Profiles: Public read/write for hackathon demo to support hybrid auth
     match /profiles/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      allow read, write: if true;
     }
   }
 }
