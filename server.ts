@@ -295,13 +295,27 @@ async function startServer() {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      // For Vercel, index.html is usually served directly by the router, 
+      // but this fallback helps in some configurations.
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  // Only listen if not running on Vercel (which handles the server lifecycle)
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+
+  return app;
 }
 
-startServer();
+// Export for Vercel
+export const appPromise = startServer();
+// Export the app for Vercel's serverless handler
+const handler = async (req: any, res: any) => {
+  const app = await appPromise;
+  app(req, res);
+};
+export default handler;
