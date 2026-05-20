@@ -75,11 +75,18 @@ async function startServer() {
       });
 
       const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok) return res.redirect('/?quran_login=error');
+      
+      if (!tokenResponse.ok) {
+        console.error("[AUTH] Token Exchange Failed:", tokenData);
+        const errorMsg = tokenData.error_description || tokenData.error || 'Token exchange failed';
+        return res.redirect(`/?quran_login=error&reason=${encodeURIComponent(errorMsg)}`);
+      }
 
+      console.log("[AUTH] Token Exchange Success!");
       res.redirect(`/?quran_login=success&access_token=${tokenData.access_token}`);
-    } catch (e) {
-      res.redirect('/?quran_login=error');
+    } catch (e: any) {
+      console.error("[AUTH] Callback Exception:", e.message);
+      res.redirect(`/?quran_login=error&reason=${encodeURIComponent(e.message)}`);
     }
   });
 
