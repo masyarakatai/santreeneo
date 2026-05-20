@@ -352,6 +352,28 @@ async function startServer() {
     }
   });
 
+  app.post("/api/quran/bookmarks", async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+      const accessToken = authHeader.replace(/^Bearer\s+/i, '');
+      const candidates = [
+        `${quranUserApiBase}/auth/v1/bookmarks`,
+        `${quranUserApiBase}/bookmarks/v1/bookmarks`,
+      ];
+      const result = await proxyUserApiFirstSuccess({
+        accessToken,
+        candidates,
+        method: 'POST',
+        body: req.body,
+      });
+      if (!result.ok) return res.status(result.status).json(result.data);
+      return res.json(result.data);
+    } catch (e: any) {
+      return res.status(500).json({ error: 'Failed to save bookmark', message: e?.message || 'Unknown error' });
+    }
+  });
+
   app.get("/api/quran/me", async (req, res) => {
     try {
       const authHeader = req.headers.authorization;

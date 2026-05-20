@@ -135,6 +135,18 @@ const UI_TEXT: Record<AppLang, Record<string, string>> = {
     profileStyle: 'Gaya Profil',
     ikhwan: 'Muslim Man',
     akhwat: 'Muslim Woman',
+    xpToNext: 'XP ke Level Berikutnya',
+    modeArrange: 'Sambung Kata',
+    modeContinue: 'Tebak Lanjutan',
+    modeMeaning: 'Tebak Arti',
+    modeAudio: 'Tebak Surah Audio',
+    settings: 'Pengaturan',
+    impactPanel: 'Panel Dampak',
+    goalsReflections: 'Target & Refleksi',
+    saveGoal: 'Simpan Target',
+    saveNote: 'Simpan Catatan',
+    addCollection: 'Tambah',
+    syncRetry: 'Sinkron Ulang',
   },
   en: {
     map: 'Map',
@@ -182,6 +194,18 @@ const UI_TEXT: Record<AppLang, Record<string, string>> = {
     profileStyle: 'Profile Style',
     ikhwan: 'Muslim Man',
     akhwat: 'Muslim Woman',
+    xpToNext: 'XP to Next Level',
+    modeArrange: 'Word Chain',
+    modeContinue: 'Continue Verse',
+    modeMeaning: 'Guess Meaning',
+    modeAudio: 'Audio Surah Quiz',
+    settings: 'Settings',
+    impactPanel: 'Impact Panel',
+    goalsReflections: 'Goals & Reflections',
+    saveGoal: 'Save Goal',
+    saveNote: 'Save Note',
+    addCollection: 'Add',
+    syncRetry: 'Retry Sync',
   }
 };
 
@@ -259,12 +283,13 @@ const LoginOverlay = ({ onGuestLogin, onQuranLogin, lang }: { onGuestLogin: () =
   );
 };
 
-const XPHeader = ({ xp, rank, streak }: { xp: number, rank: string, streak: number }) => {
+const XPHeader = ({ xp, rank, streak, lang }: { xp: number, rank: string, streak: number, lang: AppLang }) => {
+  const t = UI_TEXT[lang];
   const level = Math.floor(xp / 100) + 1;
   const currentLevelXP = xp % 100;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[1000] flex items-center justify-between px-4 py-2 pointer-events-none">
+    <header className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[1000] flex items-center justify-between px-4 py-2 pointer-events-none">
       <div className="w-full rounded-full mx-2 mt-2 border-4 border-on-surface shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-primary flex items-center justify-between p-2 pointer-events-auto">
         {/* Left: Profile Badge */}
         <div className="flex-shrink-0 flex items-center gap-2">
@@ -281,7 +306,7 @@ const XPHeader = ({ xp, rank, streak }: { xp: number, rank: string, streak: numb
         
         {/* Center: Goal & Progress */}
         <div className="flex-1 px-4 flex flex-col justify-center items-center">
-          <span className="text-on-primary font-label-bold text-[10px] uppercase tracking-wider mb-1">XP to Next Level</span>
+          <span className="text-on-primary font-label-bold text-[10px] uppercase tracking-wider mb-1">{t.xpToNext}</span>
           <div className="w-full h-4 bg-on-surface rounded-full border-2 border-on-surface overflow-hidden relative">
             <div className="absolute top-0 left-0 h-full bg-[#D4FF00] border-r-2 border-on-surface transition-all duration-1000" style={{ width: `${currentLevelXP}%` }}></div>
           </div>
@@ -596,7 +621,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     const modes: GameMode[] = ['arrange', 'continue', 'meaning', 'audio'];
     return modes[Math.floor(Math.random() * modes.length)];
   }, []);
-  const maxHearts = gameMode === 'audio' ? 2 : 3;
+  const maxHearts = gameMode === 'audio' || gameMode === 'continue' ? 2 : 3;
 
   useEffect(() => {
     if (waypoint.audioUrl) {
@@ -707,19 +732,14 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   const currentSurahName = SURAH_NAMES[currentSurahNo] || `${currentSurahNo}`;
 
   const getLabelForMode = (mode: GameMode) => {
-    if (lang === 'id') {
-      if (mode === 'arrange') return 'Sambung Kata';
-      if (mode === 'continue') return 'Tebak Lanjutan';
-      if (mode === 'meaning') return 'Tebak Arti';
-      return 'Audio Surah';
-    }
-    if (mode === 'arrange') return 'Word Order';
-    if (mode === 'continue') return 'Continue Verse';
-    if (mode === 'meaning') return 'Guess Meaning';
-    return 'Audio Surah';
+    if (mode === 'arrange') return t.modeArrange;
+    if (mode === 'continue') return t.modeContinue;
+    if (mode === 'meaning') return t.modeMeaning;
+    return t.modeAudio;
   };
+  const closeLocked = !!quizSelected && quizSelected !== quizCorrect;
   const requestClose = () => {
-    if (isClosing) return;
+    if (isClosing || closeLocked) return;
     setIsClosing(true);
     setTimeout(() => onClose(), 220);
   };
@@ -733,7 +753,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
     setIsError(true);
     playSound('error');
     setHearts((prev) => Math.max(0, prev - 1));
-    setTimeout(() => setIsError(false), 500);
+    setTimeout(() => setIsError(false), 700);
   };
 
   const buildContinueOptions = useCallback(() => {
@@ -900,7 +920,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
   useEffect(() => {
     const picked = randomizeGameMode();
     setGameMode(picked);
-    setHearts(picked === 'audio' ? 2 : 3);
+    setHearts(picked === 'audio' || picked === 'continue' ? 2 : 3);
     setSelectedWords([]);
     setQuizSelected(null);
     setQuizOptions([]);
@@ -1143,7 +1163,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
         </div>
       <button
         onClick={requestClose}
-        className="absolute top-4 right-4 z-20 w-11 h-11 rounded-full border-2 border-on-surface bg-surface text-on-surface hard-shadow flex items-center justify-center"
+        disabled={closeLocked}
+        className={cn("absolute top-4 right-4 z-20 w-11 h-11 rounded-full border-2 border-on-surface bg-surface text-on-surface hard-shadow flex items-center justify-center", closeLocked && "opacity-40 cursor-not-allowed")}
         aria-label={lang === 'id' ? 'Tutup tanpa ambil waypoint' : 'Close without taking waypoint'}
       >
         <span className="material-symbols-outlined">close</span>
@@ -1252,7 +1273,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                   <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2">
                     {lang === 'id' ? 'Pilih kata lanjutan yang benar' : 'Choose the correct next word'}
                   </p>
-                  <div className="font-arabic-display text-2xl leading-[2.2] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2 justify-end">
+                  <div className="font-arabic-display text-2xl leading-[2.2] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2 justify-end flex-row-reverse">
                     {continuePromptWords.map((token, idx) =>
                       token === '__GAP__' ? (
                         <span key={`gap-${idx}`} className="inline-flex items-center justify-center min-w-14 h-10 px-2 rounded-lg border-2 border-error bg-error-container text-error font-label-bold text-xs tracking-widest">
@@ -1286,9 +1307,17 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                   >
                     <span className="material-symbols-outlined text-base">{audioQuizPlaying ? 'volume_up' : 'play_arrow'}</span>
                     {lang === 'id'
-                      ? `Putar Ulang Potongan ${audioSnippetStage} (${audioSnippetStage === 1 ? '8d' : '12d'})`
+                      ? `Putar Ulang Potongan ${audioSnippetStage} (${audioSnippetStage === 1 ? '8s' : '12s'})`
                       : `Replay Snippet ${audioSnippetStage} (${audioSnippetStage === 1 ? '8s' : '12s'})`}
                   </button>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <button onClick={() => playAudioSnippet(1)} className="bg-surface border-2 border-on-surface rounded-lg py-2 text-[10px] font-label-bold uppercase">
+                      {lang === 'id' ? 'Potongan 1' : 'Snippet 1'}
+                    </button>
+                    <button onClick={() => playAudioSnippet(2)} className="bg-surface border-2 border-on-surface rounded-lg py-2 text-[10px] font-label-bold uppercase">
+                      {lang === 'id' ? 'Potongan 2' : 'Snippet 2'}
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-1 gap-2">
@@ -1308,7 +1337,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, lang }: { waypoint: Waypoint 
                       className={cn(
                         "text-left p-3 rounded-lg border-2 font-body-md text-sm transition-all",
                         isPicked && isAnswer && "bg-[#d8ffe0] border-[#0b6b1d]",
-                        isPicked && !isAnswer && "bg-error-container border-error",
+                        isPicked && !isAnswer && "bg-error-container border-error animate-[shake_0.28s_ease-in-out_2]",
                         !isPicked && "bg-surface border-on-surface/40 hover:bg-surface-variant"
                       )}
                     >
@@ -1388,7 +1417,7 @@ const BottomNav = ({ active, onChange, lang }: { active: string, onChange: (val:
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[1000] flex justify-around items-center h-24 pb-4 pointer-events-none">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[1000] flex justify-around items-center h-24 pb-4 pointer-events-none">
       <div className="rounded-xl mx-auto border-4 border-on-surface w-[90%] max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-secondary-container pointer-events-auto flex justify-around items-center px-2 py-2">
       {tabs.map((tab) => {
         const isActive = active === tab.id;
@@ -1529,6 +1558,7 @@ export default function App() {
   const [showLocationInfo, setShowLocationInfo] = useState(false);
   const [lockNotice, setLockNotice] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState(Date.now());
+  const [xpGain, setXpGain] = useState<number | null>(null);
 
   const [path, setPath] = useState(window.location.pathname);
   const isTopUpRunningRef = useRef(false);
@@ -2210,6 +2240,8 @@ export default function App() {
 
     const newXp = xp + awardedPoints;
     setXp(newXp);
+    setXpGain(awardedPoints);
+    window.setTimeout(() => setXpGain(null), 1200);
     
     // Simple streak logic: increment for now to show the feature
     const newStreak = streak + 1;
@@ -2260,6 +2292,15 @@ export default function App() {
 
       // SYNC WITH QURAN FOUNDATION USER API
       if (user.isQuranAuth && user.accessToken) {
+        setQuranBookmarkIds((prev) => new Set([...Array.from(prev), selectedWaypoint.ayahKey]));
+        fetch('/api/quran/bookmarks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.accessToken}`
+          },
+          body: JSON.stringify({ verse_key: selectedWaypoint.ayahKey })
+        }).catch(() => {});
         fetch('/api/quran/activity', {
           method: 'POST',
           headers: { 
@@ -2368,8 +2409,14 @@ export default function App() {
   const showSimMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
   return (
-    <div className="h-screen w-screen relative bg-surface overflow-hidden select-none touch-none bg-pattern">
-      <XPHeader xp={xp} rank={rank} streak={streak} />
+    <div className="h-screen w-screen bg-surface overflow-hidden select-none touch-none flex justify-center">
+      <div className="relative h-screen w-full max-w-md bg-pattern bg-surface overflow-hidden">
+      <XPHeader xp={xp} rank={rank} streak={streak} lang={appLang} />
+      {xpGain !== null && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[1600] bg-brand-neon text-on-surface border-2 border-on-surface rounded-full px-3 py-1 text-xs font-label-bold uppercase animate-[floatUp_1.1s_ease-out_forwards]">
+          +{xpGain} XP
+        </div>
+      )}
       
       {locationStatus === 'error' && (
         <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1500] w-[90%] max-w-sm bg-error-container neubrutalist-border hard-shadow px-4 py-3 rounded-2xl flex items-start gap-3">
@@ -2645,7 +2692,7 @@ export default function App() {
 
             <div className="bg-surface-container-high p-5 rounded-2xl neubrutalist-border hard-shadow">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">Impact Panel</h3>
+                <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">{t.impactPanel}</h3>
                 <span className={cn(
                   "text-[10px] px-2 py-1 rounded-full border-2 border-on-surface font-label-bold uppercase",
                   syncStatus === 'synced' && "bg-[#B9F6CA] text-on-surface",
@@ -2676,19 +2723,19 @@ export default function App() {
                 disabled={syncQueue.length === 0 || syncStatus === 'syncing'}
                 className="mt-3 w-full bg-brand-neon text-on-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase disabled:opacity-50"
               >
-                Sync Ulang ({syncQueue.length})
+                {t.syncRetry} ({syncQueue.length})
               </button>
             </div>
 
             <div className="bg-surface-container-high p-5 rounded-2xl neubrutalist-border hard-shadow space-y-4">
-              <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">Goals & Reflections</h3>
+              <h3 className="text-sm font-label-bold uppercase tracking-widest text-on-surface">{t.goalsReflections}</h3>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">Goal</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Target' : 'Goal'}</label>
                 <div className="grid grid-cols-3 gap-2">
                   <input
                     value={goalTitle}
                     onChange={(e) => setGoalTitle(e.target.value)}
-                    placeholder="Daily Ayah Goal"
+                    placeholder={appLang === 'id' ? 'Target Ayat Harian' : 'Daily Ayah Goal'}
                     className="col-span-2 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
                   <input
@@ -2699,7 +2746,7 @@ export default function App() {
                     className="bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
                 </div>
-                <button onClick={createGoal} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">Save Goal</button>
+                <button onClick={createGoal} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.saveGoal}</button>
                 <div className="space-y-1">
                   {goals.slice(0, 3).map((g) => (
                     <div key={g.id} className="bg-surface rounded-lg border-2 border-on-surface p-2">
@@ -2710,20 +2757,20 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">Notes</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Catatan' : 'Notes'}</label>
                 <input
                   value={noteVerseKey}
                   onChange={(e) => setNoteVerseKey(e.target.value)}
-                  placeholder="Verse key (e.g. 2:255)"
+                  placeholder={appLang === 'id' ? 'Kunci ayat (cth. 2:255)' : 'Verse key (e.g. 2:255)'}
                   className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                 />
                 <textarea
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
-                  placeholder="Write your reflection..."
+                  placeholder={appLang === 'id' ? 'Tulis refleksimu...' : 'Write your reflection...'}
                   className="w-full bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs min-h-20"
                 />
-                <button onClick={createNote} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">Save Note</button>
+                <button onClick={createNote} className="w-full bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.saveNote}</button>
                 <div className="space-y-1">
                   {notes.slice(0, 3).map((n) => (
                     <div key={n.id} className="bg-surface rounded-lg border-2 border-on-surface p-2">
@@ -2734,15 +2781,15 @@ export default function App() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-label-bold uppercase tracking-widest">Collections</label>
+                <label className="text-[10px] font-label-bold uppercase tracking-widest">{appLang === 'id' ? 'Koleksi' : 'Collections'}</label>
                 <div className="flex gap-2">
                   <input
                     value={collectionName}
                     onChange={(e) => setCollectionName(e.target.value)}
-                    placeholder="Collection name"
+                    placeholder={appLang === 'id' ? 'Nama koleksi' : 'Collection name'}
                     className="flex-1 bg-surface border-2 border-on-surface rounded-lg px-2 py-2 text-xs"
                   />
-                  <button onClick={createCollection} className="bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">Add</button>
+                  <button onClick={createCollection} className="bg-surface rounded-lg neubrutalist-border px-3 py-2 text-xs font-label-bold uppercase">{t.addCollection}</button>
                 </div>
                 <div className="space-y-1">
                   {collectionsData.slice(0, 3).map((c) => (
@@ -2756,7 +2803,7 @@ export default function App() {
             </div>
 
             <div className="bg-surface-container-high p-5 rounded-2xl neubrutalist-border hard-shadow">
-              <h3 className="text-sm font-label-bold uppercase tracking-widest mb-3 text-on-surface">Settings</h3>
+              <h3 className="text-sm font-label-bold uppercase tracking-widest mb-3 text-on-surface">{t.settings}</h3>
               <label className="block text-[10px] font-label-bold uppercase tracking-widest mb-2">{t.language}</label>
               <select
                 value={appLang}
@@ -2847,6 +2894,11 @@ export default function App() {
           25% { transform: translateX(-4px); }
           75% { transform: translateX(4px); }
         }
+        @keyframes floatUp {
+          0% { transform: translate(-50%, 0); opacity: 0; }
+          15% { opacity: 1; }
+          100% { transform: translate(-50%, -24px); opacity: 0; }
+        }
         .animate-shake {
           animation: shake 0.2s ease-in-out infinite;
         }
@@ -2858,6 +2910,7 @@ export default function App() {
           to { transform: rotate(360deg); }
         }
       `}} />
+      </div>
     </div>
   );
 }
