@@ -1707,7 +1707,7 @@ export default function App() {
             if (meResp.ok && meData?.profile) {
               const p = meData.profile;
               quranUser.uid = p.id ? `quran-user-${String(p.id)}` : quranUser.uid;
-              quranUser.displayName = p.name || quranUser.displayName;
+              quranUser.displayName = p.name || (p.email ? String(p.email).split('@')[0] : quranUser.displayName);
               quranUser.email = p.email || quranUser.email;
               quranUser.photoURL = p.avatar || '';
             }

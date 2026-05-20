@@ -382,11 +382,36 @@ async function startServer() {
         if (!resp.ok) continue;
 
         const payload = data?.data || data?.user || data;
+        const profileNode = payload?.profile || payload?.attributes || payload;
+        const nameCandidate =
+          profileNode?.name ||
+          profileNode?.full_name ||
+          profileNode?.display_name ||
+          profileNode?.username ||
+          payload?.name ||
+          payload?.full_name ||
+          payload?.display_name ||
+          payload?.username ||
+          null;
+        const emailCandidate =
+          profileNode?.email ||
+          payload?.email ||
+          null;
+        const avatarCandidate =
+          profileNode?.avatar ||
+          profileNode?.avatar_url ||
+          profileNode?.image_url ||
+          profileNode?.profile_photo_url ||
+          payload?.avatar ||
+          payload?.avatar_url ||
+          payload?.image_url ||
+          payload?.profile_photo_url ||
+          null;
         const profile = {
-          id: payload?.id || payload?.user_id || payload?.uuid || null,
-          name: payload?.name || payload?.full_name || payload?.username || null,
-          email: payload?.email || null,
-          avatar: payload?.avatar || payload?.avatar_url || payload?.image_url || null,
+          id: profileNode?.id || payload?.id || payload?.user_id || payload?.uuid || payload?.sub || null,
+          name: nameCandidate,
+          email: emailCandidate,
+          avatar: avatarCandidate,
         };
         return res.json({ profile, source: url });
       }
