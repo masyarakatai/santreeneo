@@ -47,55 +47,123 @@ const quranPublic = createPublicClient({
 
 // --- Components ---
 
-const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void, onQuranLogin: () => void }) => (
-  <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
-    <motion.div 
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="bg-surface-container-high neubrutalist-border hard-shadow w-full max-w-sm rounded-3xl p-10 flex flex-col items-center gap-6 relative"
-    >
-      <div className="w-24 h-24 bg-tertiary-fixed rounded-full neubrutalist-border flex items-center justify-center text-4xl shadow-[6px_6px_0px_0px_rgba(34,26,20,1)] hover:-translate-y-2 transition-transform cursor-pointer">
-        🧭
-      </div>
-      <div>
-        <h1 className="text-4xl font-headline-md font-bold text-on-surface uppercase mb-2 text-center">Santree Go</h1>
-        <p className="text-on-surface-variant font-label-bold uppercase tracking-widest text-[10px] text-center">A Journey to Enlightenment</p>
-      </div>
-      
-      <div className="flex flex-col gap-3 w-full">
-        <button 
-          onClick={onQuranLogin}
-          className="w-full bg-brand-neon text-on-surface font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
-        >
-          <img src="https://quran.com/images/logos/logo-quran.png" alt="Quran" className="w-6 h-6 invert" />
-          LOGIN WITH QURAN.COM
-        </button>
+const LoginOverlay = ({ onGuestLogin, onQuranLogin }: { onGuestLogin: () => void, onQuranLogin: () => void }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-        <button 
-          onClick={() => {
-            playSound('open');
-            signInWithGoogle();
-          }}
-          className="w-full bg-primary text-on-primary font-headline-md font-bold py-4 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all"
-        >
-          <span className="material-symbols-outlined">login</span>
-          GOOGLE LOGIN
-        </button>
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    setLoading(true);
+    setError('');
+    playSound('open');
+    try {
+      const { loginWithEmail, registerWithEmail } = await import('./lib/firebase');
+      if (isRegistering) {
+        await registerWithEmail(email, password);
+      } else {
+        await loginWithEmail(email, password);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Authentication failed');
+      playSound('error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        <button 
-          onClick={onGuestLogin}
-          className="w-full bg-surface text-on-surface font-label-bold py-3 rounded-full flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all border-dashed text-sm"
-        >
-          GUEST MODE (DEMO)
-        </button>
-      </div>
+  return (
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-surface p-6 text-center overflow-hidden bg-pattern">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-surface-container-high neubrutalist-border hard-shadow w-full max-w-sm rounded-3xl p-8 flex flex-col items-center gap-4 relative"
+      >
+        <div className="w-20 h-20 bg-tertiary-fixed rounded-full neubrutalist-border flex items-center justify-center text-4xl shadow-[4px_4px_0px_0px_rgba(34,26,20,1)] hover:-translate-y-1 transition-transform cursor-pointer">
+          🧭
+        </div>
+        <div>
+          <h1 className="text-3xl font-headline-md font-bold text-on-surface uppercase mb-1 text-center">Santree Go</h1>
+          <p className="text-on-surface-variant font-label-bold uppercase tracking-widest text-[9px] text-center">A Journey to Enlightenment</p>
+        </div>
+        
+        <form onSubmit={handleEmailAuth} className="w-full flex flex-col gap-3">
+          <input 
+            type="email" 
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            required
+          />
+          <input 
+            type="password" 
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border-2 border-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            required
+          />
+          {error && <p className="text-error text-[10px] font-bold uppercase">{error}</p>}
+          
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-on-primary font-headline-md font-bold py-3 rounded-xl flex items-center justify-center gap-3 neubrutalist-border hard-shadow neubrutalist-interaction transition-all disabled:opacity-50"
+          >
+            {loading ? 'WAITING...' : (isRegistering ? 'SIGN UP' : 'LOGIN')}
+          </button>
 
-      <p className="text-[10px] text-on-surface-variant italic px-4">
-        Login with Quran.com to sync your streaks and bookmarks directly!
-      </p>
-    </motion.div>
-  </div>
-);
+          <button 
+            type="button"
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="text-primary text-[10px] font-bold uppercase hover:underline"
+          >
+            {isRegistering ? 'Already have an account? Login' : "Don't have an account? Sign Up"}
+          </button>
+        </form>
+
+        <div className="w-full flex items-center gap-2 my-1">
+          <div className="h-[1px] bg-on-surface/20 flex-1"></div>
+          <span className="text-[10px] font-bold text-on-surface-variant">OR</span>
+          <div className="h-[1px] bg-on-surface/20 flex-1"></div>
+        </div>
+        
+        <div className="flex flex-col gap-2 w-full">
+          <button 
+            onClick={onQuranLogin}
+            className="w-full bg-brand-neon text-on-surface font-label-bold py-2 rounded-xl flex items-center justify-center gap-2 neubrutalist-border hard-shadow neubrutalist-interaction transition-all text-xs"
+          >
+            <img src="https://quran.com/images/logos/logo-quran.png" alt="Quran" className="w-4 h-4 invert" />
+            LOGIN WITH QURAN.COM
+          </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => {
+                playSound('open');
+                signInWithGoogle();
+              }}
+              className="bg-white text-on-surface font-label-bold py-2 rounded-xl flex items-center justify-center gap-2 neubrutalist-border hard-shadow neubrutalist-interaction transition-all text-[10px]"
+            >
+              GOOGLE
+            </button>
+            <button 
+              onClick={onGuestLogin}
+              className="bg-surface-variant text-on-surface font-label-bold py-2 rounded-xl flex items-center justify-center gap-2 neubrutalist-border hard-shadow neubrutalist-interaction transition-all text-[10px] border-dashed"
+            >
+              GUEST
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const XPHeader = ({ xp, rank, streak }: { xp: number, rank: string, streak: number }) => {
   const level = Math.floor(xp / 100) + 1;
