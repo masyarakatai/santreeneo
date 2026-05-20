@@ -56,8 +56,16 @@ async function startServer() {
 
   // Auth Callback
   app.get("/api/auth/quran/callback", async (req, res) => {
-    const { code } = req.query;
-    if (!code) return res.redirect('/?quran_login=error&reason=no_code');
+    const { code, error, error_description } = req.query;
+    
+    if (error) {
+      console.error("[AUTH] OAuth Provider Error:", error, error_description);
+      return res.redirect(`/?quran_login=error&reason=${encodeURIComponent(error_description as string || (error as string))}`);
+    }
+
+    if (!code) {
+      return res.redirect('/?quran_login=error&reason=no_code_received');
+    }
 
     try {
       const protocol = process.env.VERCEL ? 'https' : (req.headers['x-forwarded-proto'] || req.protocol);
