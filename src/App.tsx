@@ -1342,6 +1342,9 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                     const [surahNoStr, ayahNo] = (waypoint.ayahKey || '').split(':');
                     const surahNo = Number(surahNoStr);
                     const surahName = SURAH_NAMES[surahNo] || surahNoStr || '?';
+                    if (gameMode === 'audio') {
+                      return false ? `TEBAK SURAT` : `GUESS THE SURAH`;
+                    }
                     return false
                       ? `SURAT ${surahName} AYAT ${ayahNo || '?'}`
                       : `SURAH ${surahName} AYAH ${ayahNo || '?'}`;
@@ -2564,6 +2567,9 @@ export default function App() {
     setCollectedWaypointAtMap(newCollectedWaypointAtMap);
     const newCollectedWaypointCooldownMap = { ...collectedWaypointCooldownMap, [selectedWaypoint.id]: perWaypointCooldown };
     setCollectedWaypointCooldownMap(newCollectedWaypointCooldownMap);
+
+    // Remove the collected waypoint from the local list immediately so it doesn't wait for a slow network update
+    setWaypoints((prev) => prev.filter(wp => wp.id !== selectedWaypoint.id));
 
     confetti({
       particleCount: 100,

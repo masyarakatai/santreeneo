@@ -767,7 +767,7 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
-        `${quranUserApiBase}/auth/v1/notes?first=50`,
+        `${quranUserApiBase}/auth/v1/notes?first=20`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
       if (!result.ok) return res.status(result.status).json(result.data);
@@ -799,9 +799,9 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
-        `${quranUserApiBase}/auth/v1/bookmarks/collections?first=50`,
-        `${quranUserApiBase}/auth/v1/collections/all?first=50`,
-        `${quranUserApiBase}/auth/v1/collections?first=50`,
+        `${quranUserApiBase}/auth/v1/bookmarks/collections`,
+        `${quranUserApiBase}/auth/v1/collections/all?first=20`,
+        `${quranUserApiBase}/auth/v1/collections?first=20`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
       if (!result.ok) return res.status(result.status).json(result.data);
