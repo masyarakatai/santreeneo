@@ -2200,14 +2200,18 @@ export default function App() {
             const audioUrl = ayah.audio?.url 
               ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
               : undefined;
-            const wordsData = (ayah.words || [])
-              .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-              .map((w: any) => ({
-                text: removeTrailingAyahMarker(w.text || w.textUthmani || w.text_uthmani || ''),
-                translation: w.translation?.text,
-                id: w.id
-              }))
-              .filter((w: any) => w.text.length > 0);
+            const wordsData = (ayah?.words || [])
+              .sort((a: any, b: any) => (Number(a?.position) || 0) - (Number(b?.position) || 0))
+              .map((w: any) => {
+                const rawText = w?.text || w?.textUthmani || w?.text_uthmani || '';
+                const cleanedText = removeTrailingAyahMarker(rawText);
+                return {
+                  text: cleanedText || rawText, // Fallback to raw if cleaning results in empty
+                  translation: w?.translation?.text || '',
+                  id: w?.id || Math.random()
+                };
+              })
+              .filter((w: any) => w.text.trim().length > 0);
 
             return {
               id: Math.random().toString(36).substring(7),
@@ -2274,14 +2278,18 @@ export default function App() {
       const audioUrl = ayah.audio?.url 
         ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
         : undefined;
-      const wordsData = (ayah.words || [])
-        .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-        .map((w: any) => ({
-          text: removeTrailingAyahMarker(w.text || w.textUthmani || w.text_uthmani || ''),
-          translation: w.translation?.text,
-          id: w.id
-        }))
-        .filter((w: any) => w.text.length > 0);
+      const wordsData = (ayah?.words || [])
+        .sort((a: any, b: any) => (Number(a?.position) || 0) - (Number(b?.position) || 0))
+        .map((w: any) => {
+          const rawText = w?.text || w?.textUthmani || w?.text_uthmani || '';
+          const cleanedText = removeTrailingAyahMarker(rawText);
+          return {
+            text: cleanedText || rawText,
+            translation: w?.translation?.text || '',
+            id: w?.id || Math.random()
+          };
+        })
+        .filter((w: any) => w.text.trim().length > 0);
       return {
         id: Math.random().toString(36).substring(7),
         lat,
@@ -2501,11 +2509,18 @@ export default function App() {
       points: ayah.metadata?.isContextual ? 25 : 15,
       theme: ayah.metadata?.contextLabel || ayah.metadata?.theme,
       isContextual: ayah.metadata?.isContextual,
-      wordsData: ayah.words?.map((w: any) => ({
-        text: w.text || w.textUthmani || w.text_uthmani,
-        translation: w.translation?.text,
-        id: w.id
-      })) || [],
+      wordsData: (ayah?.words || [])
+        .sort((a: any, b: any) => (Number(a?.position) || 0) - (Number(b?.position) || 0))
+        .map((w: any) => {
+          const rawText = w?.text || w?.textUthmani || w?.text_uthmani || '';
+          const cleanedText = removeTrailingAyahMarker(rawText);
+          return {
+            text: cleanedText || rawText,
+            translation: w?.translation?.text || '',
+            id: w?.id || Math.random()
+          };
+        })
+        .filter((w: any) => w.text.trim().length > 0),
       loadError: false,
     } as typeof waypointToReload;
     setWaypoints((prev) => prev.map((wp) => (wp.id === waypointToReload.id ? nextWaypoint : wp)));
