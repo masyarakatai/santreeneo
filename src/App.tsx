@@ -1209,32 +1209,6 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                     : 'Show Full Ayah'}
                 </button>
               )}
-	            <div className="flex justify-center gap-3 mt-0.5">
-              <button 
-                onClick={toggleAudio}
-                disabled={!hasPlayableAudio || isPlaying}
-                className={cn(
-                  "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all",
-                  (!hasPlayableAudio || isPlaying) && "opacity-50"
-                )}
-              >
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {isPlaying ? 'graphic_eq' : 'play_arrow'}
-                </span>
-              </button>
-	            </div>
-	            <div className="mt-1">
-                <div className="h-2 w-full bg-surface-container rounded-full border-2 border-on-surface overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-200"
-                    style={{ width: `${audioDuration > 0 ? (audioCurrentTime / audioDuration) * 100 : 0}%` }}
-                  />
-                </div>
-                <div className="mt-1 flex justify-between text-[10px] font-label-bold text-on-surface">
-                  <span>{formatPlaybackTime(audioCurrentTime)}</span>
-                  <span>{formatPlaybackTime(audioDuration)}</span>
-                </div>
-	            </div>
 	          </div>
           </div>
 
