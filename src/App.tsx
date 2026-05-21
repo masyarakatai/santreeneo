@@ -1765,6 +1765,16 @@ export default function App() {
     setSyncStatus('pending');
   };
 
+  const clearExpiredQuranSession = useCallback(() => {
+    localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
+    setUser((currentUser: any) => (currentUser?.isQuranAuth ? null : currentUser));
+    setSyncStatus('failed');
+  }, []);
+
+  const isInvalidQuranToken = (data: any) =>
+    data?.type === 'invalid_token' ||
+    /expired or inactive|invalid token/i.test(String(data?.message || data?.error || ''));
+
   const loadQuranUserData = useCallback(async (accessToken: string) => {
     try {
       const [goalsRes, notesRes, collectionsRes] = await Promise.all([
@@ -1777,6 +1787,14 @@ export default function App() {
         notesRes.json().catch(() => ({})),
         collectionsRes.json().catch(() => ({})),
       ]);
+
+      if (
+        (goalsRes.status === 401 || goalsRes.status === 403 || notesRes.status === 401 || notesRes.status === 403 || collectionsRes.status === 401 || collectionsRes.status === 403) &&
+        (isInvalidQuranToken(goalsData) || isInvalidQuranToken(notesData) || isInvalidQuranToken(collectionsDataRaw))
+      ) {
+        clearExpiredQuranSession();
+        return;
+      }
 
       const mappedGoals = extractList(goalsData, 'goals').map((g: any, idx: number) => ({
         id: String(g?.id || g?.uuid || `goal-${idx}`),
@@ -1802,7 +1820,7 @@ export default function App() {
     } catch {
       setSyncStatus(syncQueue.length > 0 ? 'pending' : 'failed');
     }
-  }, [syncQueue.length]);
+  }, [clearExpiredQuranSession, syncQueue.length]);
 
   const retrySyncQueue = useCallback(async () => {
     if (!user?.isQuranAuth || !user?.accessToken || syncQueue.length === 0) return;
@@ -1818,6 +1836,12 @@ export default function App() {
           },
           body: JSON.stringify(item.payload),
         });
+        const data = await res.json().catch(() => ({}));
+        if ((res.status === 401 || res.status === 403) && isInvalidQuranToken(data)) {
+          clearExpiredQuranSession();
+          remaining.push(item);
+          break;
+        }
         if (!res.ok) remaining.push(item);
       } catch {
         remaining.push(item);
@@ -1826,7 +1850,7 @@ export default function App() {
     setSyncQueue(remaining);
     setSyncStatus(remaining.length ? 'failed' : 'synced');
     if (remaining.length === 0) await loadQuranUserData(user.accessToken);
-  }, [loadQuranUserData, syncQueue, user]);
+  }, [clearExpiredQuranSession, loadQuranUserData, syncQueue, user]);
   useEffect(() => {
     const handleLocationChange = () => setPath(window.location.pathname);
     window.addEventListener('popstate', handleLocationChange);
@@ -1880,6 +1904,11 @@ export default function App() {
             })
               .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
               .then(({ ok, data }) => {
+                if (isInvalidQuranToken(data)) {
+                  localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
+                  setUser(null);
+                  return;
+                }
                 if (!ok || !data?.profile) return;
                 const p = data.profile;
                 const refreshedUser = {
