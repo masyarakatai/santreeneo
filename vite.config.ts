@@ -44,9 +44,10 @@ export default defineConfig(({mode}) => {
           ],
         },
         workbox: {
-          // Avoid precaching HTML (index.html) to reduce "stale UI" issues after deploys.
-          // JS/CSS assets are fingerprinted; HTML is not.
           globPatterns: ['**/*.{js,css,ico,png,svg,webp}'],
+          // Vercel handles SPA fallback; disabling this avoids Workbox requiring
+          // index.html in the precache manifest.
+          navigateFallback: null,
           // Never serve app-shell for backend routes.
           // OAuth callback must always hit the server endpoint directly.
           navigateFallbackDenylist: [/^\/api\//],
