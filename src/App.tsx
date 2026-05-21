@@ -541,18 +541,23 @@ const normalizeArabicToken = (input: string) =>
     .trim();
 const isWaqfOnlyToken = (input: string) => {
   const compact = input.replace(/\s+/g, '');
-  return compact.length > 0 && /^[\u06D6-\u06ED]+$/.test(compact);
+  // Also consider standalone numbers/markers as "waqf-like" to merge them or filter them
+  const isMarker = /^[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*[۝]?$/.test(compact);
+  return (compact.length > 0 && /^[\u06D6-\u06ED]+$/.test(compact)) || isMarker;
 };
 const mergeWaqfToPrevious = (pairs: { text: string; translation: string }[]) => {
   const merged: { text: string; translation: string }[] = [];
   for (const pair of pairs) {
     const text = (pair.text || '').trim();
     if (!text) continue;
-    // If it's just a waqf/punctuation mark, attach to the previous word if possible
+    // If it's just a waqf/punctuation mark/ayah marker, attach to the previous word if possible
     if (isWaqfOnlyToken(text) && merged.length > 0) {
       merged[merged.length - 1].text = `${merged[merged.length - 1].text}${text}`;
       continue;
     }
+    // If it's a marker but nothing to attach to, skip it entirely for game words
+    if (isWaqfOnlyToken(text)) continue;
+
     merged.push({ text, translation: pair.translation || '' });
   }
   return merged;
@@ -1979,20 +1984,46 @@ export default function App() {
         // Load/Create Game Profile in Firebase AFTER uid has been finalized.
         const profileRef = doc(db, 'profiles', quranUser.uid);
         const profileSnap = await getDoc(profileRef);
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
         if (profileSnap.exists()) {
-          setXp(profileSnap.data().xp || 0);
-          setEssence(profileSnap.data().essence || 0);
-          setStreak(profileSnap.data().streak || 0);
-          setRank(profileSnap.data().rank || 'Seeker of Light');
-          setCollectedIds(new Set(profileSnap.data().collectedIds || []));
-          setCollectedAtMap(profileSnap.data().collectedAtMap || {});
-          setCollectedCooldownMap(profileSnap.data().collectedCooldownMap || {});
+          const data = profileSnap.data();
+          let currentStreak = data.streak || 0;
+          const lastLogin = data.lastLoginDate; // YYYY-MM-DD
+
+          if (!lastLogin) {
+            currentStreak = 1;
+          } else if (lastLogin !== todayStr) {
+            const lastDate = new Date(lastLogin);
+            const diffDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+            if (diffDays === 1) {
+              currentStreak += 1;
+            } else if (diffDays > 1) {
+              currentStreak = 1;
+            }
+          }
+
+          setXp(data.xp || 0);
+          setEssence(data.essence || 0);
+          setStreak(currentStreak);
+          setRank(data.rank || 'Seeker of Light');
+          setCollectedIds(new Set(data.collectedIds || []));
+          setCollectedAtMap(data.collectedAtMap || {});
+          setCollectedCooldownMap(data.collectedCooldownMap || {});
+
+          // Update streak in background if it changed or date is new
+          if (lastLogin !== todayStr) {
+            await updateDoc(profileRef, { streak: currentStreak, lastLoginDate: todayStr });
+          }
         } else {
           await setDoc(profileRef, {
-            xp: 0, streak: 0, rank: 'Seeker of Light',
+            xp: 0, streak: 1, rank: 'Seeker of Light',
             essence: 0,
+            lastLoginDate: todayStr,
             userId: quranUser.uid, name: quranUser.displayName, email: quranUser.email || null, avatar: quranUser.photoURL || null, collectedIds: [], collectedAtMap: {}, collectedCooldownMap: {}
           });
+          setStreak(1);
         }
       };
       bootstrapQuranUser();
@@ -2031,26 +2062,51 @@ export default function App() {
         localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
         const profileRef = doc(db, 'profiles', u.uid);
         const profileSnap = await getDoc(profileRef);
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
         if (profileSnap.exists()) {
-          setXp(profileSnap.data().xp || 0);
-          setEssence(profileSnap.data().essence || 0);
-          setStreak(profileSnap.data().streak || 0);
-          setRank(profileSnap.data().rank || 'Seeker of Light');
-          setCollectedIds(new Set(profileSnap.data().collectedIds || []));
-          setCollectedAtMap(profileSnap.data().collectedAtMap || {});
-          setCollectedCooldownMap(profileSnap.data().collectedCooldownMap || {});
+          const data = profileSnap.data();
+          let currentStreak = data.streak || 0;
+          const lastLogin = data.lastLoginDate;
+
+          if (!lastLogin) {
+            currentStreak = 1;
+          } else if (lastLogin !== todayStr) {
+            const lastDate = new Date(lastLogin);
+            const diffDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+            if (diffDays === 1) {
+              currentStreak += 1;
+            } else if (diffDays > 1) {
+              currentStreak = 1;
+            }
+          }
+
+          setXp(data.xp || 0);
+          setEssence(data.essence || 0);
+          setStreak(currentStreak);
+          setRank(data.rank || 'Seeker of Light');
+          setCollectedIds(new Set(data.collectedIds || []));
+          setCollectedAtMap(data.collectedAtMap || {});
+          setCollectedCooldownMap(data.collectedCooldownMap || {});
+
+          if (lastLogin !== todayStr) {
+            await updateDoc(profileRef, { streak: currentStreak, lastLoginDate: todayStr });
+          }
         } else {
           await setDoc(profileRef, {
             xp: 0,
             essence: 0,
-            streak: 0,
+            streak: 1,
             rank: 'Seeker of Light',
+            lastLoginDate: todayStr,
             userId: u.uid,
             name: u.displayName || 'Anonymous Seeker',
             collectedIds: [],
             collectedAtMap: {},
             collectedCooldownMap: {}
           });
+          setStreak(1);
         }
       } else {
         // Keep Quran auth session if available, do not force jump to login page.
@@ -2557,8 +2613,6 @@ export default function App() {
     window.setTimeout(() => setXpGain(null), 1200);
     
     // Simple streak logic: increment for now to show the feature
-    const newStreak = streak + 1;
-    setStreak(newStreak);
     setGoals((prev) => prev.map((g) => ({ ...g, progress: Math.min(g.target, (g.progress || 0) + 1) })));
 
     const newCollectedIds = new Set(collectedIds);
@@ -2608,7 +2662,6 @@ export default function App() {
         await updateDoc(profileRef, { 
           xp: newXp, 
           essence: newEssence,
-          streak: newStreak,
           rank: newRank,
           name: user.displayName || 'Anonymous Seeker',
           collectedIds: Array.from(newCollectedIds),
