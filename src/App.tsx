@@ -578,7 +578,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
       const fromWordsData = mergeWaqfToPrevious(fromWordsDataRaw);
       if (fromWordsData.length > 0) return fromWordsData;
     }
-    const rawArabic = (waypoint.arabicText || '').trim() || stripHtml(waypoint.tajweedText || '').trim();
+    const rawArabic = removeTrailingAyahMarker((waypoint.arabicText || '').trim() || stripHtml(waypoint.tajweedText || '').trim());
     const fallbackRaw = rawArabic
       .split(/\s+/)
       .map((w) => w.trim())
@@ -2200,11 +2200,14 @@ export default function App() {
             const audioUrl = ayah.audio?.url 
               ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
               : undefined;
-            const wordsData = ayah.words?.map((w: any) => ({
-              text: w.text || w.textUthmani || w.text_uthmani,
-              translation: w.translation?.text,
-              id: w.id
-            })) || [];
+            const wordsData = (ayah.words || [])
+              .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+              .map((w: any) => ({
+                text: removeTrailingAyahMarker(w.text || w.textUthmani || w.text_uthmani || ''),
+                translation: w.translation?.text,
+                id: w.id
+              }))
+              .filter((w: any) => w.text.length > 0);
 
             return {
               id: Math.random().toString(36).substring(7),
@@ -2271,11 +2274,14 @@ export default function App() {
       const audioUrl = ayah.audio?.url 
         ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`) 
         : undefined;
-      const wordsData = ayah.words?.map((w: any) => ({
-        text: w.text || w.textUthmani || w.text_uthmani,
-        translation: w.translation?.text,
-        id: w.id
-      })) || [];
+      const wordsData = (ayah.words || [])
+        .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+        .map((w: any) => ({
+          text: removeTrailingAyahMarker(w.text || w.textUthmani || w.text_uthmani || ''),
+          translation: w.translation?.text,
+          id: w.id
+        }))
+        .filter((w: any) => w.text.length > 0);
       return {
         id: Math.random().toString(36).substring(7),
         lat,
