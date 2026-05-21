@@ -532,8 +532,10 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
     input
       // Normalize nbsp
       .replace(/\u00A0/g, ' ')
-      // Remove ending ayah symbol/marker patterns like: ۝٣٨ , ﴿٣٨﴾ , (38)
+      // Remove patterns from the end like: ۝٣٨ , ﴿٣٨﴾ , (38)
       .replace(/[\s]*[۝]?\s*[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*$/u, '')
+      // Remove patterns from the start
+      .replace(/^[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*[۝]?[\s]*/u, '')
       .trim();
   const getCleanArabicText = () => {
     // Prefer plain Arabic text to avoid broken glyph shaping from stripped tajweed HTML.
@@ -667,9 +669,13 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
     if (hearts <= 0) return;
     if (selectedWords.includes(id)) return;
     
-    const nextExpectedWord = words[selectedWords.length];
-    const clickedWord = shuffledBank.find(w => w.id === id)?.word;
-    
+    const nextExpectedWordRaw = words[selectedWords.length] || '';
+    const clickedWordRaw = shuffledBank.find(w => w.id === id)?.word || '';
+
+    // Normalize for comparison to ignore diacritics/markers differences
+    const nextExpectedWord = normalizeArabicToken(nextExpectedWordRaw);
+    const clickedWord = normalizeArabicToken(clickedWordRaw);
+
     if (clickedWord === nextExpectedWord) {
       setSelectedWords(p => [...p, id]);
       playSound('open');
@@ -1421,7 +1427,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                   <p className="text-[10px] uppercase tracking-wider font-label-bold text-on-surface mb-2.5 bg-surface border-2 border-on-surface rounded-full px-2.5 py-1 inline-flex">
                     'Choose the correct next word'
                   </p>
-                  <div className="font-arabic-display text-xl leading-[2.05] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2">
+                  <div className="font-arabic-display text-xl leading-[2.05] bg-surface rounded-lg p-3 border-2 border-on-surface/20 flex flex-wrap gap-2" dir="rtl">
                     {continuePromptWords.map((token, idx) =>
                       token === '__GAP__' ? (
                         <span key={`gap-${idx}`} className="inline-flex items-center justify-center min-w-12 h-8 px-2 rounded-lg border-2 border-error bg-error-container text-error font-label-bold text-[10px] tracking-widest">
@@ -1478,21 +1484,21 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                   const isPicked = quizSelected === choice;
                   const isAnswer = quizCorrect === choice;
                   return (
-                    <button
-                      key={`${choice}-${idx}`}
-                      onClick={() => handleQuizChoice(choice)}
-                      disabled={!!quizSelected || hearts <= 0}
-                      className={cn(
-                        "p-3 rounded-lg border-2 transition-all hard-shadow min-h-11",
-                        gameMode === 'continue' ? "text-right font-arabic-display text-base" : "text-left font-body-md text-xs sm:text-sm",
-                        isPicked && isAnswer && "bg-[#d8ffe0] border-[#0b6b1d]",
-                        isPicked && !isAnswer && "bg-error-container border-error animate-[shake_0.28s_ease-in-out_2]",
-                        !isPicked && "bg-surface border-on-surface/40 hover:bg-surface-variant hover:-translate-y-0.5"
-                      )}
-                      dir={gameMode === 'continue' ? 'rtl' : 'ltr'}
-                    >
-                      {choice}
-                    </button>
+                      <button
+                        key={`${choice}-${idx}`}
+                        onClick={() => handleQuizChoice(choice)}
+                        disabled={!!quizSelected || hearts <= 0}
+                        className={cn(
+                          "p-3 rounded-lg border-2 transition-all hard-shadow min-h-11",
+                          gameMode === 'continue' ? "text-right font-arabic-display text-base" : "text-left font-body-md text-xs sm:text-sm",
+                          isPicked && isAnswer && "bg-[#d8ffe0] border-[#0b6b1d]",
+                          isPicked && !isAnswer && "bg-error-container border-error animate-[shake_0.28s_ease-in-out_2]",
+                          !isPicked && "bg-surface border-on-surface/40 hover:bg-surface-variant hover:-translate-y-0.5"
+                        )}
+                        dir={gameMode === 'continue' ? 'rtl' : 'ltr'}
+                      >
+                        {choice}
+                      </button>
                   );
                 })}
               </div>
@@ -1534,20 +1540,17 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                     );
                   }
 
-                  return (
-                    <button 
-                      key={`bank-${item.id}`}
-                      onClick={() => handleWordClick(item.id)}
-                      disabled={hearts <= 0}
-                      className="h-16 sm:h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary hover:-translate-y-0.5 active:scale-95 px-1.5 sm:px-2"
-                    >
-                      <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1">{item.word}</span>
-                      <span className="text-[9px] sm:text-[10px] font-label-bold text-on-surface uppercase mt-1 text-center line-clamp-1">
-                        {item.translation || '...'}
-                      </span>
-                    </button>
-                  );
-                })}
+                  <button
+                    key={`bank-${item.id}`}
+                    onClick={() => handleWordClick(item.id)}
+                    disabled={hearts <= 0}
+                    className="h-16 sm:h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary hover:-translate-y-0.5 active:scale-95 px-1.5 sm:px-2"
+                  >
+                    <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1" dir="rtl">{item.word}</span>
+                    <span className="text-[9px] sm:text-[10px] font-label-bold text-on-surface uppercase mt-1 text-center line-clamp-1">
+                      {item.translation || '...'}
+                    </span>
+                  </button>                })}
               </div>
             </div>
           )}
