@@ -796,6 +796,8 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
+        `${quranUserApiBase}/auth/v1/bookmarks/collections?mushafId=4`,
+        `${quranUserApiBase}/auth/v1/collections/all?mushafId=4`,
         `${quranUserApiBase}/auth/v1/collections?mushafId=4`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
