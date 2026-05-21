@@ -28,14 +28,14 @@ export default async function handler(req: any, res: any) {
             : `${quranUserApiBase}/auth/v1/goals?mushafId=4`,
         ],
         notes: [
-          `${quranUserApiBase}/auth/v1/notes`,
+          `${quranUserApiBase}/auth/v1/notes?first=50`,
         ],
         collections: [
           ...(req.method === 'GET'
             ? [
-                `${quranUserApiBase}/auth/v1/bookmarks/collections`,
-                `${quranUserApiBase}/auth/v1/collections/all`,
-                `${quranUserApiBase}/auth/v1/collections`,
+                `${quranUserApiBase}/auth/v1/bookmarks/collections?first=50`,
+                `${quranUserApiBase}/auth/v1/collections/all?first=50`,
+                `${quranUserApiBase}/auth/v1/collections?first=50`,
               ]
             : [`${quranUserApiBase}/auth/v1/collections`]),
         ],
