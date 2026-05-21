@@ -109,15 +109,15 @@ export class QuranContentApiClient {
     if (!this.refreshing) {
       this.refreshing = (async () => {
         const tokenUrl = `${this.oauthBaseUrl}/oauth2/token`;
+        const basicAuth = Buffer.from(`${this.clientId}:${this.clientSecret}`, "utf8").toString("base64");
         const body = new URLSearchParams({
           grant_type: "client_credentials",
-          client_id: this.clientId,
-          client_secret: this.clientSecret,
           scope: this.scope,
         });
         const resp = await fetch(tokenUrl, {
           method: "POST",
           headers: {
+            Authorization: `Basic ${basicAuth}`,
             "Content-Type": "application/x-www-form-urlencoded",
             Accept: "application/json",
             "User-Agent": this.userAgent,
