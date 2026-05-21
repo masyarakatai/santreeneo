@@ -1793,6 +1793,15 @@ export default function App() {
 
   // Handle Auth state
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('quran_login') === 'error') {
+      localStorage.removeItem(QURAN_AUTH_STORAGE_KEY);
+      setUser(null);
+      setAuthLoading(false);
+      window.history.replaceState({}, document.title, '/');
+      return;
+    }
+
     const cachedQuranAuthRaw = localStorage.getItem(QURAN_AUTH_STORAGE_KEY);
     if (cachedQuranAuthRaw) {
       try {
@@ -1830,7 +1839,6 @@ export default function App() {
     }
 
     // Check for Quran.com login success in URL
-    const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const accessToken = hashParams.get('access_token');
     const idToken = hashParams.get('id_token');

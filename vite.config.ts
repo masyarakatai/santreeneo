@@ -45,6 +45,9 @@ export default defineConfig(({mode}) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+          // Never serve app-shell for backend routes.
+          // OAuth callback must always hit the server endpoint directly.
+          navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
