@@ -75,7 +75,7 @@ export default async function handler(req: any, res: any) {
       })();
       const tokenSub = claims?.sub ? String(claims.sub) : null;
       const tokenUsername = claims?.preferred_username ? String(claims.preferred_username) : null;
-      const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || 'https://prelive-oauth2.quran.foundation';
+      const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || 'https://oauth2.quran.foundation';
 
       const reflectProfileCandidates = [
         tokenSub ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,

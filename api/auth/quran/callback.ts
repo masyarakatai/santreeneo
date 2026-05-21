@@ -1,5 +1,5 @@
 export default async function handler(req: any, res: any) {
-  const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
+  const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://oauth2.quran.foundation";
   const parseCookies = (cookieHeader?: string) => {
     const out: Record<string, string> = {};
     if (!cookieHeader) return out;

@@ -1,5 +1,7 @@
-export const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
-const requestedScope = process.env.QURAN_OAUTH_SCOPE || "openid profile";
+export const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://oauth2.quran.foundation";
+const requestedScope =
+  process.env.QURAN_OAUTH_SCOPE ||
+  "openid offline_access bookmark reading_session activity_day streak preference collection goal note user";
 const scopeSet = new Set(requestedScope.split(/\s+/).map((s) => s.trim()).filter(Boolean));
 scopeSet.add("user");
 export const oauthScope = Array.from(scopeSet).join(" ");

@@ -53,7 +53,7 @@ const quranPublic = createPublicClient({
   clientId: import.meta.env.VITE_QURAN_CLIENT_ID || 'b952392b-b89f-4b66-93a8-60e2dfb82ae4',
   clientType: 'public',
   services: {
-    oauth2BaseUrl: import.meta.env.VITE_QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation"
+    oauth2BaseUrl: import.meta.env.VITE_QURAN_OAUTH2_BASE_URL || "https://oauth2.quran.foundation"
   }
 });
 
