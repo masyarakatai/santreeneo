@@ -522,51 +522,52 @@ const SmartRadar = ({
   );
 };
 
+const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ');
+const removeTrailingAyahMarker = (input: string) =>
+  input
+    // Normalize nbsp
+    .replace(/\u00A0/g, ' ')
+    // Remove patterns from the end like: ۝٣٨ , ﴿٣٨﴾ , (38)
+    .replace(/[\s]*[۝]?\s*[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*$/u, '')
+    // Remove patterns from the start
+    .replace(/^[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*[۝]?[\s]*/u, '')
+    .trim();
+const normalizeArabicToken = (input: string) =>
+  input
+    // Remove Arabic diacritics and tatweel
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    // Keep Arabic letters and Quranic signs, but remove standard punctuation for matching
+    .replace(/[^\u0621-\u063A\u0641-\u064A\u06D6-\u06ED]/g, '')
+    .trim();
+const isWaqfOnlyToken = (input: string) => {
+  const compact = input.replace(/\s+/g, '');
+  return compact.length > 0 && /^[\u06D6-\u06ED]+$/.test(compact);
+};
+const mergeWaqfToPrevious = (pairs: { text: string; translation: string }[]) => {
+  const merged: { text: string; translation: string }[] = [];
+  for (const pair of pairs) {
+    const text = (pair.text || '').trim();
+    if (!text) continue;
+    // If it's just a waqf/punctuation mark, attach to the previous word if possible
+    if (isWaqfOnlyToken(text) && merged.length > 0) {
+      merged[merged.length - 1].text = `${merged[merged.length - 1].text}${text}`;
+      continue;
+    }
+    merged.push({ text, translation: pair.translation || '' });
+  }
+  return merged;
+};
+
 const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], onSaveReplayNote, canSaveReplayNote = false }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void, onReloadVerse: (waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }) => Promise<void>, notes?: QuranNote[], onSaveReplayNote?: (verseKey: string, content: string) => Promise<void>, canSaveReplayNote?: boolean,   }) => {
   type GameMode = 'arrange' | 'continue' | 'meaning' | 'audio';
   const t = UI_TEXT;
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightData, setInsightData] = useState<{ translation: string | null } | null>(null);
-  const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ');
-  const removeTrailingAyahMarker = (input: string) =>
-    input
-      // Normalize nbsp
-      .replace(/\u00A0/g, ' ')
-      // Remove patterns from the end like: ۝٣٨ , ﴿٣٨﴾ , (38)
-      .replace(/[\s]*[۝]?\s*[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*$/u, '')
-      // Remove patterns from the start
-      .replace(/^[﴿(]?\s*[0-9٠-٩]{1,3}\s*[﴾)]?\s*[۝]?[\s]*/u, '')
-      .trim();
   const getCleanArabicText = () => {
     // Prefer plain Arabic text to avoid broken glyph shaping from stripped tajweed HTML.
     const source = (waypoint.arabicText || '').trim() || (waypoint.tajweedText || '').trim();
     const cleaned = removeTrailingAyahMarker(stripHtml(source));
     return cleaned || source;
-  };
-  const normalizeArabicToken = (input: string) =>
-    input
-      // Remove Arabic diacritics and tatweel
-      .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-      // Keep Arabic letters and Quranic signs, but remove standard punctuation for matching
-      .replace(/[^\u0621-\u063A\u0641-\u064A\u06D6-\u06ED]/g, '')
-      .trim();
-  const isWaqfOnlyToken = (input: string) => {
-    const compact = input.replace(/\s+/g, '');
-    return compact.length > 0 && /^[\u06D6-\u06ED]+$/.test(compact);
-  };
-  const mergeWaqfToPrevious = (pairs: { text: string; translation: string }[]) => {
-    const merged: { text: string; translation: string }[] = [];
-    for (const pair of pairs) {
-      const text = (pair.text || '').trim();
-      if (!text) continue;
-      // If it's just a waqf/punctuation mark, attach to the previous word if possible
-      if (isWaqfOnlyToken(text) && merged.length > 0) {
-        merged[merged.length - 1].text = `${merged[merged.length - 1].text}${text}`;
-        continue;
-      }
-      merged.push({ text, translation: pair.translation || '' });
-    }
-    return merged;
   };
   const wordPairs = useMemo(() => {
     if (waypoint.wordsData && waypoint.wordsData.length > 0) {
