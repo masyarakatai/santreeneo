@@ -31,7 +31,9 @@ export default async function handler(req: any, res: any) {
           `${quranUserApiBase}/auth/v1/notes`,
         ],
         collections: [
-          `${quranUserApiBase}/auth/v1/collections`,
+          req.method === 'GET'
+            ? `${quranUserApiBase}/auth/v1/collections?mushafId=4`
+            : `${quranUserApiBase}/auth/v1/collections`,
         ],
       };
       const candidates = map[route];
