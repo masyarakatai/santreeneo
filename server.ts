@@ -111,9 +111,10 @@ async function startServer() {
   scopeSet.add("user");
   const oauthScope = Array.from(scopeSet).join(" ");
   const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
-  const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
-    ? quranUserApiBaseRaw.replace(/\/+$/, "")
-    : `${quranUserApiBaseRaw.replace(/\/+$/, "")}/quran-reflect`;
+  const quranUserApiBase = quranUserApiBaseRaw.replace(/\/+$/, "");
+  const quranReflectApiBase = quranUserApiBase.includes("/quran-reflect")
+    ? quranUserApiBase
+    : `${quranUserApiBase}/quran-reflect`;
 
   const stripHtml = (input: string) => input.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const parseJsonSafe = (raw: string) => {
@@ -401,14 +402,20 @@ async function startServer() {
       const authHeader = req.headers.authorization;
       if (authHeader) {
         const accessToken = authHeader.replace(/^Bearer\s+/i, '');
-        const resp = await fetch(`${quranUserApiBase}/auth/v1/activity`, {
+        const rawBody = req.body || {};
+        const verseKey = String(rawBody.verse_key || rawBody.verseKey || '').trim();
+        const activityBody = /^\d{1,3}:\d{1,3}$/.test(verseKey)
+          ? { type: 'QURAN', seconds: 1, ranges: [`${verseKey}-${verseKey}`], mushafId: 4 }
+          : { type: 'QURAN', seconds: 1, ranges: ['1:1-1:1'], mushafId: 4 };
+        const resp = await fetch(`${quranUserApiBase}/auth/v1/activity-days`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-auth-token': accessToken,
             'x-client-id': process.env.QURAN_CLIENT_ID || '',
+            'x-timezone': String(req.headers['x-timezone'] || 'Asia/Jakarta'),
           },
-          body: JSON.stringify(req.body)
+          body: JSON.stringify(activityBody)
         });
         if (resp.ok) return res.json(await resp.json());
       }
@@ -476,10 +483,8 @@ async function startServer() {
 
       const attempts = [
         { url: `${quranUserApiBase}/auth/v1/bookmarks`, body: normalizedBody },
-        { url: `${quranUserApiBase}/bookmarks/v1/bookmarks`, body: normalizedBody },
         // Quran.com-style favorites/default collection path
         { url: `${quranUserApiBase}/auth/v1/collections/__default__/bookmarks`, body: normalizedBody },
-        { url: `${quranUserApiBase}/v1/collections/__default__/bookmarks`, body: normalizedBody },
       ];
 
       let lastError: { status: number; data: any } | null = null;
@@ -526,9 +531,9 @@ async function startServer() {
 
       // Preferred profile source based on official user profile endpoint.
       const reflectProfileCandidates = [
-        tokenSub ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,
-        tokenUsername ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenUsername)}?qdc=true` : null,
-        `${quranUserApiBase}/v1/users/me?qdc=true`,
+        tokenSub ? `${quranReflectApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,
+        tokenUsername ? `${quranReflectApiBase}/v1/users/${encodeURIComponent(tokenUsername)}?qdc=true` : null,
+        `${quranReflectApiBase}/v1/users/me?qdc=true`,
       ].filter(Boolean) as string[];
       for (const url of reflectProfileCandidates) {
         try {
@@ -711,8 +716,7 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
-        `${quranUserApiBase}/auth/v1/goals`,
-        `${quranUserApiBase}/goals/v1/goals`,
+        `${quranUserApiBase}/auth/v1/goals/get-todays-plan?type=QURAN_PAGES&mushafId=4`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
       if (!result.ok) return res.status(result.status).json(result.data);
@@ -728,10 +732,18 @@ async function startServer() {
       if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
-        `${quranUserApiBase}/auth/v1/goals`,
-        `${quranUserApiBase}/goals/v1/goals`,
+        `${quranUserApiBase}/auth/v1/goals?mushafId=4`,
       ];
-      const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'POST', body: req.body });
+      const result = await proxyUserApiFirstSuccess({
+        accessToken,
+        candidates,
+        method: 'POST',
+        body: {
+          type: 'QURAN_PAGES',
+          amount: Number(req.body?.target || req.body?.amount || 1),
+          category: 'QURAN',
+        },
+      });
       if (!result.ok) return res.status(result.status).json(result.data);
       return res.json(result.data);
     } catch (e: any) {
@@ -746,7 +758,6 @@ async function startServer() {
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
         `${quranUserApiBase}/auth/v1/notes`,
-        `${quranUserApiBase}/notes/v1/notes`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
       if (!result.ok) return res.status(result.status).json(result.data);
@@ -763,7 +774,6 @@ async function startServer() {
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
         `${quranUserApiBase}/auth/v1/notes`,
-        `${quranUserApiBase}/notes/v1/notes`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'POST', body: req.body });
       if (!result.ok) return res.status(result.status).json(result.data);
@@ -780,7 +790,6 @@ async function startServer() {
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
         `${quranUserApiBase}/auth/v1/collections`,
-        `${quranUserApiBase}/collections/v1/collections`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'GET' });
       if (!result.ok) return res.status(result.status).json(result.data);
@@ -797,7 +806,6 @@ async function startServer() {
       const accessToken = authHeader.replace(/^Bearer\s+/i, '');
       const candidates = [
         `${quranUserApiBase}/auth/v1/collections`,
-        `${quranUserApiBase}/collections/v1/collections`,
       ];
       const result = await proxyUserApiFirstSuccess({ accessToken, candidates, method: 'POST', body: req.body });
       if (!result.ok) return res.status(result.status).json(result.data);

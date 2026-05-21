@@ -9,10 +9,10 @@ export default async function handler(req: any, res: any) {
       : String(req.query?.slug || '').split('/').filter(Boolean);
     const route = slugParts.join('/');
 
-    const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || 'https://apis.quran.foundation';
-    const quranUserApiBase = quranUserApiBaseRaw.includes('/quran-reflect')
-      ? quranUserApiBaseRaw.replace(/\/+$/, '')
-      : `${quranUserApiBaseRaw.replace(/\/+$/, '')}/quran-reflect`;
+    const quranUserApiBase = (process.env.QURAN_USER_API_BASE || 'https://apis.quran.foundation').replace(/\/+$/, '');
+    const quranReflectApiBase = quranUserApiBase.includes('/quran-reflect')
+      ? quranUserApiBase
+      : `${quranUserApiBase}/quran-reflect`;
     const authHeader = req.headers?.authorization;
     const accessToken = authHeader ? String(authHeader).replace(/^Bearer\s+/i, '') : null;
     const parseJsonSafe = (raw: string) => { try { return JSON.parse(raw); } catch { return { raw }; } };
@@ -23,33 +23,38 @@ export default async function handler(req: any, res: any) {
       if (!accessToken) return res.status(401).json({ error: 'Unauthorized' });
       const map: Record<string, string[]> = {
         goals: [
-          `${quranUserApiBase}/auth/v1/goals`,
-          `${quranUserApiBase}/goals/v1/goals`,
-          `${quranUserApiBase}/v1/goals`,
+          req.method === 'GET'
+            ? `${quranUserApiBase}/auth/v1/goals/get-todays-plan?type=QURAN_PAGES&mushafId=4`
+            : `${quranUserApiBase}/auth/v1/goals?mushafId=4`,
         ],
         notes: [
           `${quranUserApiBase}/auth/v1/notes`,
-          `${quranUserApiBase}/notes/v1/notes`,
-          `${quranUserApiBase}/v1/notes`,
         ],
         collections: [
           `${quranUserApiBase}/auth/v1/collections`,
-          `${quranUserApiBase}/collections/v1/collections`,
-          `${quranUserApiBase}/v1/collections`,
         ],
       };
       const candidates = map[route];
       const method = req.method === 'POST' ? 'POST' : 'GET';
       let lastFailure: { status: number; data: any } | null = null;
       for (const url of candidates) {
+        const rawBody = readJsonBody();
+        const providerBody = route === 'goals' && method === 'POST'
+          ? {
+              type: 'QURAN_PAGES',
+              amount: Number(rawBody.target || rawBody.amount || 1),
+              category: 'QURAN',
+            }
+          : rawBody;
         const resp = await fetch(url, {
           method,
           headers: {
             ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
             'x-auth-token': accessToken,
             'x-client-id': process.env.QURAN_CLIENT_ID || '',
+            ...(route === 'goals' ? { 'x-timezone': String(req.headers?.['x-timezone'] || 'Asia/Jakarta') } : {}),
           },
-          ...(method === 'POST' ? { body: JSON.stringify(readJsonBody()) } : {}),
+          ...(method === 'POST' ? { body: JSON.stringify(providerBody) } : {}),
         });
         const raw = await resp.text();
         const data = parseJsonSafe(raw);
@@ -78,9 +83,9 @@ export default async function handler(req: any, res: any) {
       const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || 'https://oauth2.quran.foundation';
 
       const reflectProfileCandidates = [
-        tokenSub ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,
-        tokenUsername ? `${quranUserApiBase}/v1/users/${encodeURIComponent(tokenUsername)}?qdc=true` : null,
-        `${quranUserApiBase}/v1/users/me?qdc=true`,
+        tokenSub ? `${quranReflectApiBase}/v1/users/${encodeURIComponent(tokenSub)}?qdc=true` : null,
+        tokenUsername ? `${quranReflectApiBase}/v1/users/${encodeURIComponent(tokenUsername)}?qdc=true` : null,
+        `${quranReflectApiBase}/v1/users/me?qdc=true`,
       ].filter(Boolean) as string[];
 
       for (const url of reflectProfileCandidates) {
@@ -159,9 +164,7 @@ export default async function handler(req: any, res: any) {
           : rawBody;
         const attempts = [
           `${quranUserApiBase}/auth/v1/bookmarks`,
-          `${quranUserApiBase}/bookmarks/v1/bookmarks`,
           `${quranUserApiBase}/auth/v1/collections/__default__/bookmarks`,
-          `${quranUserApiBase}/v1/collections/__default__/bookmarks`,
         ];
         let lastFailure: { status: number; data: any } | null = null;
         for (const url of attempts) {
@@ -183,10 +186,20 @@ export default async function handler(req: any, res: any) {
     if (route === 'activity') {
       if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
       if (!accessToken) return res.json({ status: 'success', source: 'mock' });
-      const resp = await fetch(`${quranUserApiBase}/auth/v1/activity`, {
+      const rawBody = readJsonBody();
+      const verseKey = String(rawBody.verse_key || rawBody.verseKey || '').trim();
+      const activityBody = /^\d{1,3}:\d{1,3}$/.test(verseKey)
+        ? { type: 'QURAN', seconds: 1, ranges: [`${verseKey}-${verseKey}`], mushafId: 4 }
+        : { type: 'QURAN', seconds: 1, ranges: ['1:1-1:1'], mushafId: 4 };
+      const resp = await fetch(`${quranUserApiBase}/auth/v1/activity-days`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-auth-token': accessToken, 'x-client-id': process.env.QURAN_CLIENT_ID || '' },
-        body: JSON.stringify(readJsonBody()),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': accessToken,
+          'x-client-id': process.env.QURAN_CLIENT_ID || '',
+          'x-timezone': String(req.headers?.['x-timezone'] || 'Asia/Jakarta'),
+        },
+        body: JSON.stringify(activityBody),
       });
       const raw = await resp.text();
       if (!resp.ok) return res.status(resp.status).json({ error: 'Activity provider failed', provider: raw });

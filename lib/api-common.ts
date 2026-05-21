@@ -7,9 +7,10 @@ scopeSet.add("user");
 export const oauthScope = Array.from(scopeSet).join(" ");
 
 const quranUserApiBaseRaw = process.env.QURAN_USER_API_BASE || "https://apis.quran.foundation";
-export const quranUserApiBase = quranUserApiBaseRaw.includes("/quran-reflect")
-  ? quranUserApiBaseRaw.replace(/\/+$/, "")
-  : `${quranUserApiBaseRaw.replace(/\/+$/, "")}/quran-reflect`;
+export const quranUserApiBase = quranUserApiBaseRaw.replace(/\/+$/, "");
+export const quranReflectApiBase = quranUserApiBase.includes("/quran-reflect")
+  ? quranUserApiBase
+  : `${quranUserApiBase}/quran-reflect`;
 
 export const parseJsonSafe = (raw: string) => {
   try { return JSON.parse(raw); } catch { return { raw }; }
