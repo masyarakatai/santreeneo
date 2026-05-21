@@ -88,6 +88,20 @@ const getDistanceMeters = (from: [number, number], to: [number, number]) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+const buildUnavailableWaypoint = (lat: number, lng: number) => {
+  return {
+    id: Math.random().toString(36).substring(7),
+    lat,
+    lng,
+    ayahKey: '',
+    arabicText: '',
+    translation: '',
+    points: 0,
+    loadError: true,
+    theme: 'Ayah unavailable',
+  } as Waypoint;
+};
+
 type QuranGoal = { id: string; title: string; target: number; progress: number };
 type QuranNote = { id: string; verseKey: string; content: string };
 type QuranCollection = { id: string; name: string; count?: number };
@@ -118,6 +132,7 @@ const UI_TEXT: Record<string, string> = {
   claimReward: 'CLAIM REWARD',
   listenAndConnect: 'LISTEN & CONNECT',
   reciting: 'RECITING...',
+  continueRecitationToClaim: 'CONTINUE RECITATION TO CLAIM REWARDS',
   listenMandatory: 'Listen to full recitation to claim reward',
   loginSubtitle: 'Unlock your Quranic potential. We use Quran.com to sync your progress, bookmarks, and streaks.',
   locationErrorTitle: 'Location Not Found',
@@ -421,7 +436,7 @@ const SmartRadar = ({
 
   const visibleWaypoints = spreadOverlappingWaypoints(
     waypoints.filter((wp) => {
-      if (collectedIds.has(wp.ayahKey)) return false;
+      if (collectedIds.has(wp.id)) return false;
       const dist = getDistanceMeters(userCoords, [wp.lat, wp.lng]);
       if (dist > lockMaxRange) return false;
       // Leave a "quiet gap" between gold and green zones.
@@ -507,7 +522,7 @@ const SmartRadar = ({
   );
 };
 
-const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote, canSaveReplayNote = false }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void, notes?: QuranNote[], onSaveReplayNote?: (verseKey: string, content: string) => Promise<void>, canSaveReplayNote?: boolean,   }) => {
+const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], onSaveReplayNote, canSaveReplayNote = false }: { waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }, onCollect: () => void, onClose: () => void, onReloadVerse: (waypoint: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }) => Promise<void>, notes?: QuranNote[], onSaveReplayNote?: (verseKey: string, content: string) => Promise<void>, canSaveReplayNote?: boolean,   }) => {
   type GameMode = 'arrange' | 'continue' | 'meaning' | 'audio';
   const t = UI_TEXT;
   const [insightLoading, setInsightLoading] = useState(false);
@@ -587,6 +602,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const [quizSelected, setQuizSelected] = useState<string | null>(null);
   const [quizCorrect, setQuizCorrect] = useState<string | null>(null);
+  const [verseReloading, setVerseReloading] = useState(false);
   const [audioQuizPlaying, setAudioQuizPlaying] = useState(false);
   const [audioSnippetStage, setAudioSnippetStage] = useState(1);
   const [continueGapIndex, setContinueGapIndex] = useState<number>(-1);
@@ -624,17 +640,13 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
 
   const toggleAudio = () => {
     if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          setAutoPlayBlocked(false);
-        })
-        .catch(() => setAutoPlayBlocked(true));
-    }
+    if (isPlaying) return;
+    audioRef.current.play()
+      .then(() => {
+        setIsPlaying(true);
+        setAutoPlayBlocked(false);
+      })
+      .catch(() => setAutoPlayBlocked(true));
   };
   const formatPlaybackTime = (seconds: number) => {
     const safe = Math.max(0, Math.floor(seconds || 0));
@@ -688,6 +700,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
   const hasPlayableAudio = !!waypoint.audioUrl;
   const canClaimReward = playbackCompleted || !hasPlayableAudio;
   const cleanArabicText = getCleanArabicText();
+  const verseUnavailable = waypoint.loadError || !waypoint.ayahKey || !cleanArabicText;
   const isLongAyah = cleanArabicText.length > 180 || cleanArabicText.split(/\s+/).length > 24;
   const activeTranslation = insightData?.translation || waypoint.translation || 'Translation unavailable.';
   const isLongTranslation = activeTranslation.length > 170;
@@ -864,6 +877,14 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
 
   useEffect(() => {
     let cancelled = false;
+    if (!waypoint.ayahKey) {
+      setInsightData(null);
+      setInsightLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const cacheKey = `en:${waypoint.ayahKey}`;
     if (verseInsightCache.has(cacheKey)) {
       const cachedTranslation = verseInsightCache.get(cacheKey);
@@ -1024,6 +1045,45 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
     );
   }
 
+  if (verseUnavailable) {
+    return (
+      <div className="fixed inset-0 z-[2100] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-surface border-4 border-on-surface shadow-[8px_8px_0px_0px_#181d17] rounded-2xl w-full max-w-sm p-6 text-center animate-[popIn_0.28s_ease-out]">
+          <div className="text-5xl mb-3">📡</div>
+          <h3 className="text-xl font-headline-md font-bold text-on-surface mb-2">
+            Ayah not loaded
+          </h3>
+          <p className="text-sm text-on-surface mb-5">
+            The verse API did not respond for this waypoint. Retry to fetch the ayah from the server.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={async () => {
+                setVerseReloading(true);
+                try {
+                  await onReloadVerse(waypoint);
+                } finally {
+                  setVerseReloading(false);
+                }
+              }}
+              disabled={verseReloading}
+              className="w-full bg-brand-neon text-on-surface border-4 border-on-surface rounded-xl py-3 font-label-bold uppercase tracking-wider hard-shadow neubrutalist-interaction disabled:opacity-60"
+            >
+              {verseReloading ? 'Reloading...' : 'Reload Ayah'}
+            </button>
+            <button
+              onClick={requestClose}
+              disabled={verseReloading}
+              className="w-full bg-surface-container text-on-surface border-4 border-on-surface rounded-xl py-3 font-label-bold uppercase tracking-wider hard-shadow neubrutalist-interaction disabled:opacity-60"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (hearts <= 0) {
     return (
       <div className="fixed inset-0 z-[2100] bg-on-surface/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1152,14 +1212,14 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
 	            <div className="flex justify-center gap-3 mt-0.5">
               <button 
                 onClick={toggleAudio}
-                disabled={!hasPlayableAudio}
+                disabled={!hasPlayableAudio || isPlaying}
                 className={cn(
                   "w-10 h-10 rounded-full border-4 border-on-surface bg-primary text-on-primary shadow-[2px_2px_0px_0px_#181d17] flex items-center justify-center hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all",
-                  !hasPlayableAudio && "opacity-50"
+                  (!hasPlayableAudio || isPlaying) && "opacity-50"
                 )}
               >
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  {isPlaying ? 'pause' : 'play_arrow'}
+                  {isPlaying ? 'graphic_eq' : 'play_arrow'}
                 </span>
               </button>
 	            </div>
@@ -1179,13 +1239,15 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
           </div>
 
           <div className={cn("shrink-0 px-4 pt-2 pb-4 border-t-2 border-on-surface/20", waypoint.isFar ? "bg-primary-container" : "bg-[#FFE8A3]")}>
-	          <button 
-	            onClick={canClaimReward ? handleClaimAndClose : toggleAudio}
-	            className={cn(
-                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-4 px-3 font-headline-md font-bold uppercase tracking-widest transition-all mt-1.5 flex items-center justify-center gap-3 group relative overflow-hidden",
-                  "hover:translate-x-0.5 hover:translate-y-0.5 cursor-pointer active:translate-x-1 active:translate-y-1 active:shadow-none",
-                  canClaimReward && "reward-glow-sweep"
-                )}
+		          <button 
+		            onClick={canClaimReward ? handleClaimAndClose : (isPlaying ? undefined : toggleAudio)}
+                    disabled={!canClaimReward && isPlaying}
+		            className={cn(
+	                  "w-full text-on-surface border-4 border-on-surface shadow-[6px_6px_0px_0px_#181d17] rounded-xl py-4 px-3 font-headline-md font-bold uppercase tracking-widest transition-all mt-1.5 flex items-center justify-center gap-3 group relative overflow-hidden",
+	                  "hover:translate-x-0.5 hover:translate-y-0.5 cursor-pointer active:translate-x-1 active:translate-y-1 active:shadow-none",
+                      !canClaimReward && isPlaying && "cursor-not-allowed hover:translate-x-0 hover:translate-y-0 active:translate-x-0 active:translate-y-0",
+	                  canClaimReward && "reward-glow-sweep"
+	                )}
 	            style={{
 	              background: canClaimReward 
                     ? 'linear-gradient(180deg, #FFF3B0 0%, #FFD54F 45%, #F6B10A 100%)' 
@@ -1195,12 +1257,12 @@ const AyahModal = ({ waypoint, onCollect, onClose, notes = [], onSaveReplayNote,
                     : '6px 6px 0px 0px #181d17'
 	            }}
 	          >
-                <span className={cn("material-symbols-outlined text-2xl transition-transform", isPlaying && "animate-pulse")}>
-                  {canClaimReward ? 'auto_awesome' : (isPlaying ? 'graphic_eq' : 'play_circle')}
-                </span>
-	            <span className="text-sm">
-                  {canClaimReward ? t.claimReward : (isPlaying ? t.reciting : t.listenAndConnect)}
-                </span>
+		                <span className={cn("material-symbols-outlined text-2xl transition-transform", isPlaying && "animate-pulse")}>
+	                  {canClaimReward ? 'auto_awesome' : (isPlaying ? 'graphic_eq' : 'play_circle')}
+	                </span>
+		            <span className="text-sm">
+	                  {canClaimReward ? t.claimReward : (isPlaying ? t.continueRecitationToClaim : t.listenAndConnect)}
+	                </span>
                 {canClaimReward && <span className="material-symbols-outlined text-xl group-hover:rotate-12 transition-transform">star</span>}
 	          </button>
               {!canClaimReward && !isPlaying && (
@@ -1632,6 +1694,9 @@ export default function App() {
   const [collectedIds, setCollectedIds] = useState<Set<string>>(new Set());
   const [collectedAtMap, setCollectedAtMap] = useState<Record<string, number>>({});
   const [collectedCooldownMap, setCollectedCooldownMap] = useState<Record<string, number>>({});
+  const [collectedWaypointIds, setCollectedWaypointIds] = useState<Set<string>>(new Set());
+  const [collectedWaypointAtMap, setCollectedWaypointAtMap] = useState<Record<string, number>>({});
+  const [collectedWaypointCooldownMap, setCollectedWaypointCooldownMap] = useState<Record<string, number>>({});
   const [quranBookmarkIds, setQuranBookmarkIds] = useState<Set<string>>(new Set());
   const [goals, setGoals] = useState<QuranGoal[]>([]);
   const [notes, setNotes] = useState<QuranNote[]>([]);
@@ -2129,17 +2194,7 @@ export default function App() {
               wordsData: wordsData
             } as any;
           } catch(e) {
-             // Fallback to Ayat Kursi if API fails
-             return {
-               id: Math.random().toString(36).substring(7),
-               lat,
-               lng,
-               ayahKey: "2:255",
-               arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
-               translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
-               audioUrl: "https://audio.qurancdn.com/Alafasy/mp3/002255.mp3",
-               points: 25
-             } as any;
+             return buildUnavailableWaypoint(lat, lng);
           }
         });
 
@@ -2209,53 +2264,45 @@ export default function App() {
         wordsData
       } as any as Waypoint;
     } catch {
-      return {
-        id: Math.random().toString(36).substring(7),
-        lat,
-        lng,
-        ayahKey: "2:255",
-        arabicText: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ",
-        translation: "Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence.",
-        points: 20
-      } as Waypoint;
+      return buildUnavailableWaypoint(lat, lng);
     }
   }, [audioReciterId]);
 
-  const activeCollectedIds = useMemo(() => {
+  const activeCollectedWaypointIds = useMemo(() => {
     const active = new Set<string>();
-    for (const id of collectedIds) {
-      const takenAt = collectedAtMap[id] || 0;
-      const cooldown = collectedCooldownMap[id] || DEFAULT_RESPAWN_MS;
+    for (const id of collectedWaypointIds) {
+      const takenAt = collectedWaypointAtMap[id] || 0;
+      const cooldown = collectedWaypointCooldownMap[id] || DEFAULT_RESPAWN_MS;
       if (nowTs - takenAt < cooldown) active.add(id);
     }
     return active;
-  }, [collectedIds, collectedAtMap, collectedCooldownMap, nowTs]);
+  }, [collectedWaypointIds, collectedWaypointAtMap, collectedWaypointCooldownMap, nowTs]);
 
   const availableWaypointCount = useMemo(
     () => waypoints.filter((wp) => {
-      const isCollected = activeCollectedIds.has(wp.ayahKey);
+      const isCollected = activeCollectedWaypointIds.has(wp.id);
       const dist = getDistanceMeters(coords, [wp.lat, wp.lng]);
       return !isCollected && dist <= lockMaxRange;
     }).length,
-    [waypoints, activeCollectedIds, coords, lockMaxRange]
+    [waypoints, activeCollectedWaypointIds, coords, lockMaxRange]
   );
   const nextRespawnMs = useMemo(() => {
     let minRemaining = Number.POSITIVE_INFINITY;
     for (const wp of waypoints) {
-      if (!activeCollectedIds.has(wp.ayahKey)) continue;
-      const takenAt = collectedAtMap[wp.ayahKey] || 0;
-      const cooldown = collectedCooldownMap[wp.ayahKey] || DEFAULT_RESPAWN_MS;
+      if (!activeCollectedWaypointIds.has(wp.id)) continue;
+      const takenAt = collectedWaypointAtMap[wp.id] || 0;
+      const cooldown = collectedWaypointCooldownMap[wp.id] || DEFAULT_RESPAWN_MS;
       const remaining = Math.max(0, cooldown - (nowTs - takenAt));
       if (remaining < minRemaining) minRemaining = remaining;
     }
     return Number.isFinite(minRemaining) ? minRemaining : 0;
-  }, [waypoints, activeCollectedIds, collectedAtMap, collectedCooldownMap, nowTs]);
+  }, [waypoints, activeCollectedWaypointIds, collectedWaypointAtMap, collectedWaypointCooldownMap, nowTs]);
 
   const topUpWaypoints = useCallback(async () => {
     if (!user || locationStatus !== 'found') return;
     if (isTopUpRunningRef.current) return;
-    const activeCount = waypoints.filter((wp) => !activeCollectedIds.has(wp.ayahKey)).length;
-      const minActiveGoal = 40;
+    const activeCount = waypoints.filter((wp) => !activeCollectedWaypointIds.has(wp.id)).length;
+    const minActiveGoal = 40;
     if (activeCount >= minActiveGoal) return;
     isTopUpRunningRef.current = true;
     try {
@@ -2271,7 +2318,7 @@ export default function App() {
     } finally {
       isTopUpRunningRef.current = false;
     }
-  }, [activeCollectedIds, coords, generateDynamicWaypoint, locationStatus, user, waypoints]);
+  }, [activeCollectedWaypointIds, coords, generateDynamicWaypoint, locationStatus, user, waypoints]);
 
   useEffect(() => {
     if (!user || locationStatus !== 'found') return;
@@ -2346,7 +2393,7 @@ export default function App() {
   }, []);
 
   const handleWaypointClick = (wp: Waypoint) => {
-    if (activeCollectedIds.has(wp.ayahKey)) return;
+    if (activeCollectedWaypointIds.has(wp.id)) return;
     
     // Distance helper
     const R = 6371e3;
@@ -2404,6 +2451,33 @@ export default function App() {
     setLocationStatus('found');
     setManualLocationResults([]);
   };
+  const reloadWaypointVerse = async (waypointToReload: Waypoint & { isFar?: boolean, distance?: number, replayOnly?: boolean }) => {
+    const verseRes = await fetch(`/api/quran/contextual-verse?lat=${waypointToReload.lat}&lng=${waypointToReload.lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
+    if (!verseRes.ok) throw new Error('API Error');
+    const verseData = await verseRes.json();
+    const ayah = verseData.verse || verseData;
+    const nextWaypoint = {
+      ...waypointToReload,
+      ayahKey: ayah.verseKey || ayah.verse_key || waypointToReload.ayahKey,
+      arabicText: ayah.textUthmani || ayah.text_uthmani || ayah.text || '',
+      tajweedText: ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed,
+      translation: ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || '',
+      audioUrl: ayah.audio?.url
+        ? (ayah.audio.url.startsWith('http') ? ayah.audio.url : `https://audio.qurancdn.com/${ayah.audio.url}`)
+        : undefined,
+      points: ayah.metadata?.isContextual ? 25 : 15,
+      theme: ayah.metadata?.contextLabel || ayah.metadata?.theme,
+      isContextual: ayah.metadata?.isContextual,
+      wordsData: ayah.words?.map((w: any) => ({
+        text: w.text || w.textUthmani || w.text_uthmani,
+        translation: w.translation?.text,
+        id: w.id
+      })) || [],
+      loadError: false,
+    } as typeof waypointToReload;
+    setWaypoints((prev) => prev.map((wp) => (wp.id === waypointToReload.id ? nextWaypoint : wp)));
+    setSelectedWaypoint(nextWaypoint);
+  };
   const onCollect = async () => {
     if (!selectedWaypoint || !user) return;
     const isDuplicateCollect = collectedIds.has(selectedWaypoint.ayahKey);
@@ -2445,6 +2519,13 @@ export default function App() {
     const perWaypointCooldown = randomizedCooldown;
     const newCollectedCooldownMap = { ...collectedCooldownMap, [selectedWaypoint.ayahKey]: perWaypointCooldown };
     setCollectedCooldownMap(newCollectedCooldownMap);
+    const newCollectedWaypointIds = new Set(collectedWaypointIds);
+    newCollectedWaypointIds.add(selectedWaypoint.id);
+    setCollectedWaypointIds(newCollectedWaypointIds);
+    const newCollectedWaypointAtMap = { ...collectedWaypointAtMap, [selectedWaypoint.id]: collectedAt };
+    setCollectedWaypointAtMap(newCollectedWaypointAtMap);
+    const newCollectedWaypointCooldownMap = { ...collectedWaypointCooldownMap, [selectedWaypoint.id]: perWaypointCooldown };
+    setCollectedWaypointCooldownMap(newCollectedWaypointCooldownMap);
 
     confetti({
       particleCount: 100,
@@ -2803,7 +2884,7 @@ export default function App() {
           <SmartRadar 
             userCoords={coords} 
             waypoints={waypoints} 
-            collectedIds={activeCollectedIds} 
+            collectedIds={activeCollectedWaypointIds} 
             onWaypointClick={handleWaypointClick}
             nearRange={nearRange}
             greenStartRange={greenStartRange}
@@ -3185,6 +3266,7 @@ export default function App() {
             waypoint={selectedWaypoint}
             onCollect={onCollect}
             onClose={() => setSelectedWaypoint(null)}
+            onReloadVerse={reloadWaypointVerse}
             notes={notes}
             onSaveReplayNote={createNoteForVerse}
             canSaveReplayNote={!!(user?.isQuranAuth && user?.accessToken)}

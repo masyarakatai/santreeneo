@@ -68,5 +68,6 @@ export type Waypoint = {
   audioUrl?: string;
   theme?: string;
   isContextual?: boolean;
+  loadError?: boolean;
   wordsData?: { text: string, translation: string, id: number }[];
 };
