@@ -770,13 +770,22 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
   const buildMeaningOptions = useCallback(() => {
     const correct = activeTranslation;
     const pool = decoyTranslations.filter((d) => d !== correct);
-    const distractors = shuffleArray(pool).slice(0, 3);
+
+    // Sort pool by similarity in length to the correct answer to make distractors less obvious
+    const sortedPool = [...pool].sort((a, b) => {
+      const diffA = Math.abs(a.length - correct.length);
+      const diffB = Math.abs(b.length - correct.length);
+      return diffA - diffB;
+    });
+
+    // Take the top 8 most similar length distractors, then shuffle and pick 3
+    const distractors = shuffleArray(sortedPool.slice(0, 8)).slice(0, 3);
+
     const options = shuffleArray([correct, ...distractors]).slice(0, 4);
     setQuizCorrect(correct);
     setQuizOptions(options);
     setQuizSelected(null);
   }, [activeTranslation, decoyTranslations]);
-
   const buildAudioSurahOptions = useCallback(() => {
     const indexes = Array.from({ length: 114 }, (_, i) => i + 1).filter((n) => n !== currentSurahNo);
     const distractorNos = shuffleArray(indexes).slice(0, 3);
