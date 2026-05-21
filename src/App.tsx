@@ -544,7 +544,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
     input
       // Remove Arabic diacritics and tatweel
       .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-      // Remove punctuation/symbols and whitespace, but keep Arabic letters and Quranic signs for attachment logic
+      // Keep Arabic letters and Quranic signs, but remove standard punctuation for matching
       .replace(/[^\u0621-\u063A\u0641-\u064A\u06D6-\u06ED]/g, '')
       .trim();
   const isWaqfOnlyToken = (input: string) => {
@@ -556,6 +556,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
     for (const pair of pairs) {
       const text = (pair.text || '').trim();
       if (!text) continue;
+      // If it's just a waqf/punctuation mark, attach to the previous word if possible
       if (isWaqfOnlyToken(text) && merged.length > 0) {
         merged[merged.length - 1].text = `${merged[merged.length - 1].text}${text}`;
         continue;
@@ -567,7 +568,7 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
   const wordPairs = useMemo(() => {
     if (waypoint.wordsData && waypoint.wordsData.length > 0) {
       const fromWordsDataRaw = waypoint.wordsData
-        .filter((w) => normalizeArabicToken(w?.text || '').length > 0)
+        .filter((w) => (w?.text || '').trim().length > 0)
         .map((w) => ({
           text: (w.text || '').trim(),
           translation: (w.translation || '').trim()
@@ -577,13 +578,12 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
     }
     const rawArabic = (waypoint.arabicText || '').trim() || stripHtml(waypoint.tajweedText || '').trim();
     const fallbackRaw = rawArabic
-      .split(' ')
+      .split(/\s+/)
       .map((w) => w.trim())
-      .filter((w) => normalizeArabicToken(w).length > 0)
+      .filter((w) => w.length > 0)
       .map((text) => ({ text, translation: '' }));
     return mergeWaqfToPrevious(fallbackRaw);
-  }, [waypoint.wordsData, waypoint.arabicText, waypoint.tajweedText]);
-  const words = useMemo(() => wordPairs.map((w) => w.text), [wordPairs]);
+  }, [waypoint.wordsData, waypoint.arabicText, waypoint.tajweedText]);  const words = useMemo(() => wordPairs.map((w) => w.text), [wordPairs]);
   const [shuffledBank, setShuffledBank] = useState<{word: string, translation: string, id: number}[]>([]);
   const [selectedWords, setSelectedWords] = useState<number[]>([]);
   const [isError, setIsError] = useState(false);
