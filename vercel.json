@@ -2,8 +2,12 @@
   "version": 2,
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/quran/(.*)",
+      "destination": "/api/quran/[...slug]?slug=$1"
+    },
+    {
+      "source": "/api/content/(.*)",
+      "destination": "/api/content/[...slug]?slug=$1"
     },
     {
       "source": "/(.*)",
