@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import express from "express";
 import path from "path";
+import { QuranContentApiClient } from "./lib/quran-content-api";
 
 dotenv.config();
 
@@ -30,6 +31,71 @@ async function startServer() {
       has_client_id: !!process.env.QURAN_CLIENT_ID,
       has_client_secret: !!process.env.QURAN_CLIENT_SECRET
     });
+  });
+
+  let quranContentApi: QuranContentApiClient | null = null;
+  let quranContentApiInitError: string | null = null;
+  const getQuranContentApi = () => {
+    if (quranContentApi) return quranContentApi;
+    if (quranContentApiInitError) throw new Error(quranContentApiInitError);
+    try {
+      quranContentApi = new QuranContentApiClient();
+      return quranContentApi;
+    } catch (e: any) {
+      quranContentApiInitError = e?.message || "Failed to initialize Quran Content API client";
+      throw new Error(quranContentApiInitError);
+    }
+  };
+  const normalizeQuery = (query: any) => {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(query || {})) {
+      if (v === undefined || v === null) continue;
+      const first = Array.isArray(v) ? v[0] : v;
+      if (first === undefined || first === null) continue;
+      out[k] = String(first);
+    }
+    return out;
+  };
+
+  // Quran.Foundation Content API proxies (server-side; client_credentials).
+  app.get("/api/content/verses/by_chapter/:chapter_number", async (req, res) => {
+    try {
+      const data = await getQuranContentApi().getVersesByChapter(req.params.chapter_number, normalizeQuery(req.query));
+      return res.json(data);
+    } catch (e: any) {
+      return res.status(502).json({ error: "Content API failed", message: e?.message || "Unknown error" });
+    }
+  });
+
+  app.get("/api/content/verses/by_key/:verse_key", async (req, res) => {
+    try {
+      const data = await getQuranContentApi().getVerseByKey(req.params.verse_key, normalizeQuery(req.query));
+      return res.json(data);
+    } catch (e: any) {
+      return res.status(502).json({ error: "Content API failed", message: e?.message || "Unknown error" });
+    }
+  });
+
+  app.get("/api/content/resources/recitations", async (req, res) => {
+    try {
+      const data = await getQuranContentApi().getRecitations(normalizeQuery(req.query));
+      return res.json(data);
+    } catch (e: any) {
+      return res.status(502).json({ error: "Content API failed", message: e?.message || "Unknown error" });
+    }
+  });
+
+  app.get("/api/content/recitations/:recitation_id/by_chapter/:chapter_number", async (req, res) => {
+    try {
+      const data = await getQuranContentApi().getRecitationsByChapter(
+        req.params.recitation_id,
+        req.params.chapter_number,
+        normalizeQuery(req.query)
+      );
+      return res.json(data);
+    } catch (e: any) {
+      return res.status(502).json({ error: "Content API failed", message: e?.message || "Unknown error" });
+    }
   });
 
   const oauthBaseUrl = process.env.QURAN_OAUTH2_BASE_URL || "https://prelive-oauth2.quran.foundation";
