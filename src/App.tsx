@@ -540,7 +540,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
   const getCleanArabicText = () => {
     // Prefer plain Arabic text to avoid broken glyph shaping from stripped tajweed HTML.
     const source = (waypoint.arabicText || '').trim() || (waypoint.tajweedText || '').trim();
-    return removeTrailingAyahMarker(stripHtml(source));
+    const cleaned = removeTrailingAyahMarker(stripHtml(source));
+    return cleaned || source;
   };
   const normalizeArabicToken = (input: string) =>
     input
@@ -578,7 +579,8 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
       const fromWordsData = mergeWaqfToPrevious(fromWordsDataRaw);
       if (fromWordsData.length > 0) return fromWordsData;
     }
-    const rawArabic = removeTrailingAyahMarker((waypoint.arabicText || '').trim() || stripHtml(waypoint.tajweedText || '').trim());
+    const sourceText = (waypoint.arabicText || '').trim() || stripHtml(waypoint.tajweedText || '').trim();
+    const rawArabic = removeTrailingAyahMarker(sourceText) || sourceText;
     const fallbackRaw = rawArabic
       .split(/\s+/)
       .map((w) => w.trim())
@@ -2188,8 +2190,8 @@ export default function App() {
               const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en&exclude=${exclude}`);
               if (!verseRes.ok) throw new Error('API Error');
               verseData = await verseRes.json();
-              ayah = verseData.verse || verseData;
-              verseKey = ayah.verseKey || ayah.verse_key || '';
+              ayah = verseData?.verse || verseData;
+              verseKey = ayah?.verseKey || ayah?.verse_key || '';
               if (verseKey && !usedVerseKeys.has(verseKey)) break;
             }
             if (!ayah) throw new Error('Missing ayah');
@@ -2270,8 +2272,8 @@ export default function App() {
       const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
       if (!verseRes.ok) throw new Error('API Error');
       const verseData = await verseRes.json();
-      const ayah = verseData.verse || verseData;
-      const verseKey = ayah.verseKey || ayah.verse_key || `${Math.floor(Math.random() * 114) + 1}:1`;
+      const ayah = verseData?.verse || verseData;
+      const verseKey = ayah?.verseKey || ayah?.verse_key || `${Math.floor(Math.random() * 114) + 1}:1`;
       const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "تجربة";
       const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
       const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";
@@ -2496,11 +2498,11 @@ export default function App() {
     const verseRes = await fetch(`/api/quran/contextual-verse?lat=${waypointToReload.lat}&lng=${waypointToReload.lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
     if (!verseRes.ok) throw new Error('API Error');
     const verseData = await verseRes.json();
-    const ayah = verseData.verse || verseData;
+    const ayah = verseData?.verse || verseData;
     const nextWaypoint = {
       ...waypointToReload,
-      ayahKey: ayah.verseKey || ayah.verse_key || waypointToReload.ayahKey,
-      arabicText: ayah.textUthmani || ayah.text_uthmani || ayah.text || '',
+      ayahKey: ayah?.verseKey || ayah?.verse_key || waypointToReload.ayahKey,
+      arabicText: ayah?.textUthmani || ayah?.text_uthmani || ayah?.text || '',
       tajweedText: ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed,
       translation: ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || '',
       audioUrl: ayah.audio?.url
