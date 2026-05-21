@@ -28,7 +28,7 @@ export default async function handler(req: any, res: any) {
             : `${quranUserApiBase}/auth/v1/goals?mushafId=4`,
         ],
         notes: [
-          `${quranUserApiBase}/auth/v1/notes?first=20`,
+          `${quranUserApiBase}/auth/v1/notes`,
         ],
         collections: [
           ...(req.method === 'GET'
