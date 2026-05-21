@@ -1543,17 +1543,20 @@ const AyahModal = ({ waypoint, onCollect, onClose, onReloadVerse, notes = [], on
                     );
                   }
 
-                  <button
-                    key={`bank-${item.id}`}
-                    onClick={() => handleWordClick(item.id)}
-                    disabled={hearts <= 0}
-                    className="h-16 sm:h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary hover:-translate-y-0.5 active:scale-95 px-1.5 sm:px-2"
-                  >
-                    <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1" dir="rtl">{item.word}</span>
-                    <span className="text-[9px] sm:text-[10px] font-label-bold text-on-surface uppercase mt-1 text-center line-clamp-1">
-                      {item.translation || '...'}
-                    </span>
-                  </button>                })}
+                  return (
+                    <button
+                      key={`bank-${item.id}`}
+                      onClick={() => handleWordClick(item.id)}
+                      disabled={hearts <= 0}
+                      className="h-16 sm:h-20 bg-white text-on-surface neubrutalist-border hard-shadow rounded-xl flex flex-col items-center justify-center neubrutalism-active transition-all cursor-pointer hover:bg-brand-secondary hover:-translate-y-0.5 active:scale-95 px-1.5 sm:px-2"
+                    >
+                      <span className="font-arabic-display text-xl sm:text-2xl leading-none mt-1" dir="rtl">{item.word}</span>
+                      <span className="text-[9px] sm:text-[10px] font-label-bold text-on-surface uppercase mt-1 text-center line-clamp-1">
+                        {item.translation || '...'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
