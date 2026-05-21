@@ -33,9 +33,9 @@ export default async function handler(req: any, res: any) {
         collections: [
           ...(req.method === 'GET'
             ? [
-                `${quranUserApiBase}/auth/v1/bookmarks/collections?mushafId=4`,
-                `${quranUserApiBase}/auth/v1/collections/all?mushafId=4`,
-                `${quranUserApiBase}/auth/v1/collections?mushafId=4`,
+                `${quranUserApiBase}/auth/v1/bookmarks/collections`,
+                `${quranUserApiBase}/auth/v1/collections/all`,
+                `${quranUserApiBase}/auth/v1/collections`,
               ]
             : [`${quranUserApiBase}/auth/v1/collections`]),
         ],
@@ -248,10 +248,13 @@ export default async function handler(req: any, res: any) {
         ? `https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`
         : `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`;
       const byKeyResp = await fetch(verseUrl);
-      const byKeyData: any = await byKeyResp.json();
+      const byKeyRaw = await byKeyResp.text();
+      const byKeyData: any = parseJsonSafe(byKeyRaw);
       if (!byKeyResp.ok || !byKeyData?.verse) {
         const resp = await fetch(`https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`);
-        const fallback: any = await resp.json();
+        const fallbackRaw = await resp.text();
+        const fallback: any = parseJsonSafe(fallbackRaw);
+        if (!resp.ok || !fallback?.verse) return res.status(502).json({ error: 'Failed to fetch fallback verse', provider: fallback });
         const verse = fallback?.verse || fallback;
         return res.json({ ...fallback, verse: { ...verse, metadata: { theme: contextTheme, contextLabel, isContextual: contextTheme !== 'general' } } });
       }
