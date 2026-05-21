@@ -44,7 +44,9 @@ export default defineConfig(({mode}) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+          // Avoid precaching HTML (index.html) to reduce "stale UI" issues after deploys.
+          // JS/CSS assets are fingerprinted; HTML is not.
+          globPatterns: ['**/*.{js,css,ico,png,svg,webp}'],
           // Never serve app-shell for backend routes.
           // OAuth callback must always hit the server endpoint directly.
           navigateFallbackDenylist: [/^\/api\//],
