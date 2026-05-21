@@ -2141,6 +2141,7 @@ export default function App() {
       const fallbackCount = wps.filter((w) => w.ayahKey === '2:255').length;
       const fallbackDominant = wps.length > 0 && fallbackCount / wps.length > 0.6;
       if (wps.length === 0 || wps.some(w => !w.arabicText || w.arabicText === "Arabic text unavailable") || fallbackDominant) {
+        const usedVerseKeys = new Set<string>();
         // Generate random points with varying distances
         const waypointPromises = Array.from({ length: 60 }, async (_, i) => {
           // Angle in radians
@@ -2161,12 +2162,20 @@ export default function App() {
           const lng = coords[1] + (rLng * Math.cos(angle));
 
           try {
-            const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en`);
-            if (!verseRes.ok) throw new Error('API Error');
-            const verseData = await verseRes.json();
-            const ayah = verseData.verse || verseData;
-            
-            const verseKey = ayah.verseKey || ayah.verse_key;
+            let verseData: any = null;
+            let ayah: any = null;
+            let verseKey = '';
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+              const exclude = encodeURIComponent(Array.from(usedVerseKeys).join(','));
+              const verseRes = await fetch(`/api/quran/contextual-verse?lat=${lat}&lng=${lng}&audio=${encodeURIComponent(audioReciterId)}&language=en&exclude=${exclude}`);
+              if (!verseRes.ok) throw new Error('API Error');
+              verseData = await verseRes.json();
+              ayah = verseData.verse || verseData;
+              verseKey = ayah.verseKey || ayah.verse_key || '';
+              if (verseKey && !usedVerseKeys.has(verseKey)) break;
+            }
+            if (!ayah) throw new Error('Missing ayah');
+            if (verseKey) usedVerseKeys.add(verseKey);
             const arabicText = ayah.textUthmani || ayah.text_uthmani || ayah.text || "Arabic text unavailable";
             const tajweedText = ayah.textUthmaniTajweed || ayah.text_uthmani_tajweed;
             const translationText = ayah.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || "Translation unavailable";

@@ -294,6 +294,12 @@ async function startServer() {
       const audioId = String(req.query.audio || '7');
       const lang = req.query.language === 'en' ? 'en' : 'id';
       const translationId = lang === 'id' ? '33' : '20';
+      const exclude = new Set(
+        String(req.query.exclude || '')
+          .split(',')
+          .map((key) => key.trim())
+          .filter(Boolean)
+      );
       const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
 
       let contextTheme: 'prayer' | 'trade' | 'nature' | 'general' = 'general';
@@ -332,14 +338,15 @@ async function startServer() {
         prayer: ['2:43', '11:114', '17:78', '29:45', '62:9', '107:4', '87:14'],
         trade: ['2:275', '2:282', '4:29', '83:1', '83:2', '17:35', '55:9'],
         nature: ['2:164', '3:190', '6:99', '10:6', '16:10', '30:41', '67:3'],
-        general: ['1:1', '2:255', '39:53', '94:5', '94:6', '93:4', '112:1']
       };
 
-      const pool = themedVersePools[contextTheme] || themedVersePools.general;
-      const chosen = pool[Math.floor(Math.random() * pool.length)];
-      const byKeyResp = await fetch(
-        `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`
-      );
+      const pool = themedVersePools[contextTheme] || [];
+      const available = pool.filter((key) => !exclude.has(key));
+      const chosen = available.length > 0 ? available[Math.floor(Math.random() * available.length)] : pool[Math.floor(Math.random() * pool.length)];
+      const verseUrl = contextTheme === 'general' || !chosen
+        ? `https://api.quran.com/api/v4/verses/random?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`
+        : `https://api.quran.com/api/v4/verses/by_key/${encodeURIComponent(chosen)}?language=${lang}&translations=${translationId}&fields=text_uthmani,text_uthmani_tajweed&audio=${encodeURIComponent(audioId)}&words=true&word_fields=text_uthmani`;
+      const byKeyResp = await fetch(verseUrl);
       const byKeyData: any = await byKeyResp.json();
 
       if (!byKeyResp.ok || !byKeyData?.verse) {
